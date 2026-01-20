@@ -1,0 +1,27 @@
+# Docker Compose para desenvolvimento local
+# Apenas MySQL em container, backend/frontend rodam localmente
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: relatorios-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: relatorios
+      MYSQL_USER: relatorios
+      MYSQL_PASSWORD: relatorios123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mysql_data:

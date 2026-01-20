@@ -1,0 +1,13 @@
+═══════════════════════════════════════════════════════════════
+PATCH 1: ATUALIZAR IMPORTS
+═══════════════════════════════════════════════════════════════
+
+ARQUIVO: frontend/src/pages/Upload.tsx
+LINHA: 4
+
+DE:
+import { Upload as UploadIcon, X, Tv, ChevronDown, ChevronUp, Check } from 'lucide-react';
+
+PARA:
+import { Upload as UploadIcon, X, Tv, ChevronDown, ChevronUp, Check, Clock, GitBranch } from 'lucide-react';
+

@@ -1,0 +1,503 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useDropzone } from 'react-dropzone';
+import { Upload as UploadIcon, X, Tv, ChevronDown, ChevronUp, Check, Clock, GitBranch } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { videosApi, professionalsApi } from '../services/api';
+import { Professional } from '../types';
+import { LoadingSpinner, DateInput } from '../components/ui';
+import { formatFileSize } from '../utils/formatters';
+
+interface VideoFormData {
+  file: File;
+  title: string;
+  requestDate: string;
+  completionDate: string;
+  professionalId: string;
+  isTv: boolean;
+  tvTitle: string;
+  isOpen: boolean;
+  isVersion: boolean;
+  originalVideoIndex: number | null;
+  customDurationSeconds: string;
+}
+
+// Helper function to detect if filename is a version
+function detectVersion(
+  filename: string,
+  allFilenames: string[]
+): { isVersion: boolean; originalIndex: number | null } {
+  const cleanName = (name: string) =>
+    name.replace(/\.[^/.]+$/, '').toLowerCase().trim();
+
+  const currentClean = cleanName(filename);
+
+  for (let i = 0; i < allFilenames.length; i++) {
+    const otherClean = cleanName(allFilenames[i]);
+
+    if (currentClean === otherClean) continue;
+
+    if (currentClean.includes(otherClean) && currentClean !== otherClean) {
+      return { isVersion: true, originalIndex: i };
+    }
+  }
+
+  return { isVersion: false, originalIndex: null };
+}
+
+export default function Upload() {
+  const [videos, setVideos] = useState<VideoFormData[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [professionals, setProfessionals] = useState<Professional[]>([]);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  const [currentUploadIndex, setCurrentUploadIndex] = useState(-1);
+  const [currentProgress, setCurrentProgress] = useState(0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadProfessionals();
+  }, []);
+
+  const loadProfessionals = async () => {
+    try {
+      const response = await professionalsApi.list();
+      setProfessionals(response.data.professionals);
+    } catch (error) {
+      console.error('Error loading professionals:', error);
+    }
+  };
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const allFilenames = acceptedFiles.map(f => f.name);
+
+    const newVideos: VideoFormData[] = acceptedFiles.map((file, index) => {
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+      const detection = detectVersion(file.name, allFilenames);
+
+      return {
+        file,
+        title: nameWithoutExt.toUpperCase(),
+        requestDate: '',
+        completionDate: '',
+        professionalId: '',
+        isTv: false,
+        tvTitle: '',
+        isOpen: index === 0,
+        isVersion: detection.isVersion,
+        originalVideoIndex: detection.originalIndex,
+        customDurationSeconds: '',
+      };
+    });
+
+    setVideos((prev) => [...prev, ...newVideos]);
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'video/mp4': ['.mp4'],
+      'video/quicktime': ['.mov'],
+    },
+    maxSize: 500 * 1024 * 1024, // 500MB
+    multiple: true,
+  });
+
+  const removeVideo = (index: number) => {
+    setVideos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleAccordion = (index: number) => {
+    setVideos((prev) =>
+      prev.map((video, i) => ({
+        ...video,
+        isOpen: i === index ? !video.isOpen : video.isOpen,
+      }))
+    );
+  };
+
+  const updateVideo = (index: number, field: keyof VideoFormData, value: any) => {
+    setVideos((prev) => {
+      // Fields that should NOT be propagated from first video
+      const excludedFields: (keyof VideoFormData)[] = ['title', 'file', 'isOpen'];
+
+      // If updating the first video (index 0) and field should be propagated
+      if (index === 0 && !excludedFields.includes(field)) {
+        console.log(`Propagating ${field} = ${value} to all videos`);
+
+        // Special handling for tvTitle - only apply if isTv is true
+        if (field === 'tvTitle') {
+          return prev.map((video) => ({
+            ...video,
+            tvTitle: video.isTv ? value : video.tvTitle,
+          }));
+        }
+
+        // Apply to all videos
+        return prev.map((video) => ({
+          ...video,
+          [field]: value,
+        }));
+      }
+
+      // Otherwise, just update the specific video
+      return prev.map((video, i) => (i === index ? { ...video, [field]: value } : video));
+    });
+  };
+
+  const handleSubmitAll = async () => {
+    // Validate all videos
+    const errors: string[] = [];
+    videos.forEach((video, index) => {
+      if (!video.title) errors.push(`Vídeo ${index + 1}: Título é obrigatório`);
+      if (!video.requestDate) errors.push(`Vídeo ${index + 1}: Data de solicitação é obrigatória`);
+      if (!video.completionDate) errors.push(`Vídeo ${index + 1}: Data de conclusão é obrigatória`);
+      if (!video.professionalId) errors.push(`Vídeo ${index + 1}: Profissional é obrigatório`);
+      if (video.isTv && !video.tvTitle) errors.push(`Vídeo ${index + 1}: Título TV é obrigatório`);
+    });
+
+    if (errors.length > 0) {
+      errors.forEach((error) => toast.error(error));
+      return;
+    }
+
+    setIsUploading(true);
+    setCurrentUploadIndex(0);
+    setCurrentProgress(0);
+
+    try {
+      let successCount = 0;
+      for (let i = 0; i < videos.length; i++) {
+        setCurrentUploadIndex(i);
+        setCurrentProgress(0);
+        const video = videos[i];
+
+        try {
+          await videosApi.upload(video.file, {
+            title: video.title,
+            requestDate: video.requestDate,
+            completionDate: video.completionDate,
+            professionalId: parseInt(video.professionalId),
+            isTv: video.isTv,
+            tvTitle: video.isTv ? video.tvTitle : undefined,
+            customDurationSeconds: video.customDurationSeconds
+              ? parseInt(video.customDurationSeconds)
+              : undefined,
+          }, (progress) => {
+            setCurrentProgress(progress);
+          });
+          successCount++;
+        } catch (error: any) {
+          const message = error.response?.data?.error || `Erro ao enviar ${video.file.name}`;
+          toast.error(message);
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} vídeo(s) enviado(s) com sucesso!`);
+        setUploadSuccess(true);
+      }
+    } finally {
+      setIsUploading(false);
+      setCurrentUploadIndex(-1);
+      setCurrentProgress(0);
+    }
+  };
+
+  const handleFinish = () => {
+    navigate('/videos');
+  };
+
+  // Show success screen after upload
+  if (uploadSuccess) {
+    return (
+      <div className="max-w-2xl mx-auto animate-fade-in">
+        <div className="card p-8 text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
+            <Check className="w-8 h-8 text-green-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Vídeos Enviados!
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mb-6">
+            Os vídeos foram processados e salvos com sucesso.
+          </p>
+
+          <div className="flex justify-center">
+            <button onClick={handleFinish} className="btn-primary">
+              Concluir
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto animate-fade-in">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Upload de Vídeos</h1>
+        <p className="text-gray-500 dark:text-gray-400">
+          Envie um ou mais vídeos para o sistema
+        </p>
+      </div>
+
+      {/* Dropzone */}
+      <div className="card p-6 mb-6">
+        <div
+          {...getRootProps()}
+          className={`
+            border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
+            transition-colors duration-200
+            ${isDragActive
+              ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+              : 'border-gray-300 dark:border-gray-600 hover:border-primary-400'
+            }
+          `}
+        >
+          <input {...getInputProps()} />
+          <UploadIcon className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+          <p className="text-gray-600 dark:text-gray-300 mb-2">
+            {isDragActive
+              ? 'Solte os arquivos aqui...'
+              : 'Arraste os vídeos aqui ou clique para selecionar'}
+          </p>
+          <p className="text-sm text-gray-500">
+            Formatos aceitos: MP4, MOV (máx. 500MB por arquivo)
+          </p>
+        </div>
+      </div>
+
+      {/* Video List with Accordions */}
+      {videos.length > 0 && (
+        <div className="space-y-4">
+          {videos.map((video, index) => (
+            <div key={index} className="card overflow-hidden">
+              {/* Accordion Header */}
+              <div
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                onClick={() => toggleAccordion(index)}
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="w-10 h-10 rounded-lg bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center flex-shrink-0">
+                    <UploadIcon className="w-5 h-5 text-primary-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 dark:text-white truncate">
+                      {video.file.name}
+                    </p>
+                    <p className="text-sm text-gray-500">{formatFileSize(video.file.size)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeVideo(index);
+                    }}
+                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg"
+                  >
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                  {video.isOpen ? (
+                    <ChevronUp className="w-5 h-5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-500" />
+                  )}
+                </div>
+              </div>
+
+              {/* Accordion Content */}
+              {video.isOpen && (
+                <div className="p-6 pt-0 space-y-5 border-t border-gray-200 dark:border-gray-700">
+                  {/* Title */}
+                  <div>
+                    <label htmlFor={`title-${index}`} className="label">
+                      Título
+                    </label>
+                    <input
+                      id={`title-${index}`}
+                      type="text"
+                      className="input"
+                      placeholder="Título do vídeo"
+                      value={video.title}
+                      onChange={(e) => updateVideo(index, 'title', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Dates */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor={`requestDate-${index}`} className="label">
+                        Data de Solicitação
+                      </label>
+                      <DateInput
+                        id={`requestDate-${index}`}
+                        value={video.requestDate}
+                        onChange={(value) => updateVideo(index, 'requestDate', value)}
+                        placeholder="DD/MM/AAAA"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor={`completionDate-${index}`} className="label">
+                        Data de Conclusão
+                      </label>
+                      <DateInput
+                        id={`completionDate-${index}`}
+                        value={video.completionDate}
+                        onChange={(value) => updateVideo(index, 'completionDate', value)}
+                        placeholder="DD/MM/AAAA"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Professional */}
+                  <div>
+                    <label htmlFor={`professionalId-${index}`} className="label">
+                      Profissional
+                    </label>
+                    <select
+                      id={`professionalId-${index}`}
+                      className="input"
+                      value={video.professionalId}
+                      onChange={(e) => updateVideo(index, 'professionalId', e.target.value)}
+                    >
+                      <option value="">Selecione o profissional</option>
+                      {professionals.map((prof) => (
+                        <option key={prof.id} value={prof.id}>
+                          {prof.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Custom Duration */}
+                  <div>
+                    <label htmlFor={`customDuration-${index}`} className="label">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>Duração Considerada (segundos)</span>
+                        {video.isVersion && (
+                          <span className="text-xs text-orange-600 dark:text-orange-400">
+                            (Versão - padrão 50%)
+                          </span>
+                        )}
+                      </div>
+                    </label>
+                    <input
+                      id={`customDuration-${index}`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      className="input"
+                      placeholder={
+                        video.isVersion
+                          ? "Deixe vazio para 50% automático"
+                          : "Deixe vazio para 100% da duração"
+                      }
+                      value={video.customDurationSeconds}
+                      onChange={(e) => updateVideo(index, 'customDurationSeconds', e.target.value)}
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      {video.isVersion
+                        ? "Padrão: 50% da duração do vídeo. Digite apenas o tempo alterado (ex: 6 segundos)."
+                        : "Padrão: 100% da duração do vídeo. Personalize se necessário."}
+                    </p>
+                  </div>
+
+                  {/* Version Badge */}
+                  {video.isVersion && video.originalVideoIndex !== null && (
+                    <div className="flex items-center gap-2 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+                      <GitBranch className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                      <div>
+                        <p className="text-sm font-medium text-orange-900 dark:text-orange-200">
+                          Versão Detectada
+                        </p>
+                        <p className="text-xs text-orange-700 dark:text-orange-300">
+                          Original: {videos[video.originalVideoIndex]?.file.name}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TV Checkbox */}
+                  <div className="flex items-center gap-3">
+                    <input
+                      id={`isTv-${index}`}
+                      type="checkbox"
+                      className="w-5 h-5 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+                      checked={video.isTv}
+                      onChange={(e) => updateVideo(index, 'isTv', e.target.checked)}
+                    />
+                    <label htmlFor={`isTv-${index}`} className="flex items-center gap-2 cursor-pointer">
+                      <Tv className="w-5 h-5 text-gray-500" />
+                      <span className="text-gray-700 dark:text-gray-300">Exibição em TV</span>
+                    </label>
+                  </div>
+
+                  {/* TV Title */}
+                  {video.isTv && (
+                    <div className="animate-slide-down">
+                      <label htmlFor={`tvTitle-${index}`} className="label">
+                        Título na TV
+                      </label>
+                      <input
+                        id={`tvTitle-${index}`}
+                        type="text"
+                        className="input"
+                        placeholder="Título que aparece na programação da TV"
+                        value={video.tvTitle}
+                        onChange={(e) => updateVideo(index, 'tvTitle', e.target.value)}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Submit Button */}
+          <div className="card p-6">
+            {isUploading && (
+              <div className="flex-1 mr-4">
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-600 dark:text-gray-300">
+                    Enviando vídeo {currentUploadIndex + 1} de {videos.length}...
+                  </span>
+                  <span className="text-gray-600 dark:text-gray-300">{currentProgress}%</span>
+                </div>
+                <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-primary-500 transition-all duration-300"
+                    style={{ width: `${currentProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={handleSubmitAll}
+                disabled={isUploading}
+                className="btn-primary flex items-center gap-2"
+              >
+                {isUploading ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    <span>Processando...</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadIcon className="w-5 h-5" />
+                    <span>Enviar Todos ({videos.length})</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

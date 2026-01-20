@@ -1,0 +1,29 @@
+{
+  "name": "relatorios-pix-filmes",
+  "version": "1.0.0",
+  "description": "Sistema de Relatórios de Vídeos - Pix Filmes",
+  "private": true,
+  "scripts": {
+    "dev": "./dev.sh",
+    "dev:watch": "./dev.sh",
+    "dev:start": "./start-all.sh",
+    "stop": "./stop-all.sh",
+    "setup:git": "./setup-git.sh",
+    "start:backend": "cd backend && DB_HOST=127.0.0.1 DB_PORT=3307 DB_NAME=relatorios DB_USER=relatorios DB_PASSWORD=relatorios123 JWT_SECRET=dev-secret-change-in-production-min-32-chars NODE_ENV=development npm run dev",
+    "start:frontend": "cd frontend && npm run dev",
+    "start:mysql": "docker-compose up -d mysql",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build:all": "npm run build:backend && npm run build:frontend",
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "logs:backend": "tail -f backend.log",
+    "logs:frontend": "tail -f frontend.log"
+  },
+  "keywords": [
+    "relatorios",
+    "videos",
+    "pix-filmes"
+  ],
+  "author": "Victor Samuel",
+  "license": "UNLICENSED"
+}

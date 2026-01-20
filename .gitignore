@@ -1,0 +1,23 @@
+node_modules/
+.env
+*.log
+.DS_Store
+dist/
+backend/dist/
+frontend/dist/
+backend.pid
+frontend.pid
+backend.log
+frontend.log
+*.pid
+uploads/
+.vscode/
+.idea/
+
+# Arquivos grandes que não devem estar no repositório
+*.deb
+*.dmg
+*.zip
+*.tar.gz
+*.rar
+google-chrome*.deb
