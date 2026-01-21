@@ -6,6 +6,7 @@ import Video from './Video';
 import DownloadLog from './DownloadLog';
 import NotificationRecipient from './NotificationRecipient';
 import ShareLink from './ShareLink';
+import ExportedReport from './ExportedReport';
 
 // Sync database and seed default settings
 const initDatabase = async (force: boolean = false): Promise<void> => {
@@ -62,6 +63,7 @@ export {
   DownloadLog,
   NotificationRecipient,
   ShareLink,
+  ExportedReport,
   initDatabase,
   DEFAULT_SETTINGS,
 };

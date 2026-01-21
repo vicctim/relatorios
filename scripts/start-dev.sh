@@ -2,6 +2,13 @@
 
 # Script para iniciar backend e frontend em desenvolvimento
 
+set -e
+
+# Diretório do projeto (detecta automaticamente)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$PROJECT_DIR"
+
 echo "🚀 Iniciando ambiente de desenvolvimento..."
 
 # Verificar se MySQL está rodando

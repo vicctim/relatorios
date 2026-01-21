@@ -298,25 +298,31 @@ class PDFService {
   <table class="videos-table">
     <thead>
       <tr>
-        <th style="width: 35%">Título</th>
-        <th style="width: 15%">Resolução</th>
-        <th style="width: 15%">Solicitado</th>
-        <th style="width: 15%">Concluído</th>
-        <th style="width: 20%; text-align: right">Duração</th>
+        <th style="width: 25%">Título</th>
+        <th style="width: 12%">Resolução</th>
+        <th style="width: 12%">Profissional</th>
+        <th style="width: 12%">Solicitado</th>
+        <th style="width: 12%">Concluído</th>
+        <th style="width: 27%; text-align: right">Duração</th>
       </tr>
     </thead>
     <tbody>
       ${data.professionals.flatMap((prof) =>
       prof.videos.map((video) => {
-        const versionsTotal = video.versions.reduce((sum, v) => sum + (v.durationSeconds * 0.5), 0);
+        const versionsTotal = video.versions.reduce((sum, v) => sum + v.calculatedDuration, 0);
         const totalDuration = video.calculatedDuration + versionsTotal;
+        const versionsList = video.versions.length > 0 
+          ? video.versions.map(v => v.resolutionLabel).join(', ')
+          : '';
         return `
             <tr>
               <td>
                 <span class="video-title">${video.title}</span>
                 ${video.isTv && video.tvTitle ? `<span class="video-tv">TV: ${video.tvTitle}</span>` : ''}
+                ${versionsList ? `<div style="font-size: 9px; color: #666; margin-top: 3px;">Versões: ${versionsList}</div>` : ''}
               </td>
               <td>${video.resolutionLabel}</td>
+              <td>${prof.name}</td>
               <td>${format(new Date(video.requestDate), 'dd/MM/yyyy')}</td>
               <td>${format(new Date(video.completionDate), 'dd/MM/yyyy')}</td>
               <td class="duration-cell">
@@ -613,25 +619,31 @@ class PDFService {
   <table class="videos-table">
     <thead>
       <tr>
-        <th style="width: 35%">Título</th>
-        <th style="width: 15%">Resolução</th>
-        <th style="width: 15%">Solicitado</th>
-        <th style="width: 15%">Concluído</th>
-        <th style="width: 20%; text-align: right">Duração</th>
+        <th style="width: 25%">Título</th>
+        <th style="width: 12%">Resolução</th>
+        <th style="width: 12%">Profissional</th>
+        <th style="width: 12%">Solicitado</th>
+        <th style="width: 12%">Concluído</th>
+        <th style="width: 27%; text-align: right">Duração</th>
       </tr>
     </thead>
     <tbody>
       ${data.professionals.flatMap((prof) =>
       prof.videos.map((video) => {
-        const versionsTotal = video.versions.reduce((sum, v) => sum + (v.durationSeconds * 0.5), 0);
+        const versionsTotal = video.versions.reduce((sum, v) => sum + v.calculatedDuration, 0);
         const totalDuration = video.calculatedDuration + versionsTotal;
+        const versionsList = video.versions.length > 0 
+          ? video.versions.map(v => v.resolutionLabel).join(', ')
+          : '';
         return `
             <tr>
               <td>
                 <span class="video-title">${video.title}</span>
                 ${video.isTv && video.tvTitle ? `<span class="video-tv">TV: ${video.tvTitle}</span>` : ''}
+                ${versionsList ? `<div style="font-size: 9px; color: #666; margin-top: 3px;">Versões: ${versionsList}</div>` : ''}
               </td>
               <td>${video.resolutionLabel}</td>
+              <td>${prof.name}</td>
               <td>${format(new Date(video.requestDate), 'dd/MM/yyyy')}</td>
               <td>${format(new Date(video.completionDate), 'dd/MM/yyyy')}</td>
               <td class="duration-cell">

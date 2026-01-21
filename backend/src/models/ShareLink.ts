@@ -6,6 +6,7 @@ import User from './User';
 interface ShareLinkAttributes {
     id: number;
     token: string;
+    customSlug: string | null;
     name: string | null;
     message: string | null;
     expiresAt: Date | null;
@@ -17,11 +18,12 @@ interface ShareLinkAttributes {
     updatedAt?: Date;
 }
 
-interface ShareLinkCreationAttributes extends Optional<ShareLinkAttributes, 'id' | 'name' | 'message' | 'expiresAt' | 'downloads' | 'maxDownloads' | 'active' | 'createdAt' | 'updatedAt'> { }
+interface ShareLinkCreationAttributes extends Optional<ShareLinkAttributes, 'id' | 'customSlug' | 'name' | 'message' | 'expiresAt' | 'downloads' | 'maxDownloads' | 'active' | 'createdAt' | 'updatedAt'> { }
 
 class ShareLink extends Model<ShareLinkAttributes, ShareLinkCreationAttributes> implements ShareLinkAttributes {
     public id!: number;
     public token!: string;
+    public customSlug!: string | null;
     public name!: string | null;
     public message!: string | null;
     public expiresAt!: Date | null;
@@ -53,6 +55,12 @@ ShareLink.init(
             type: DataTypes.STRING(100),
             allowNull: false,
             unique: true,
+        },
+        customSlug: {
+            type: DataTypes.STRING(100),
+            allowNull: true,
+            unique: true,
+            // Com underscored: true na config global, customSlug vira custom_slug automaticamente
         },
         name: {
             type: DataTypes.STRING(255),
@@ -91,6 +99,7 @@ ShareLink.init(
         sequelize,
         tableName: 'share_links',
         timestamps: true,
+        // Usa underscored: true da config global, então customSlug -> custom_slug
     }
 );
 

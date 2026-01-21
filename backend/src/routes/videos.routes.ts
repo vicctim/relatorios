@@ -289,6 +289,9 @@ router.post(
       const thumbnailFilename = path.basename(storedFilename, path.extname(storedFilename));
       const thumbnailPath = await ffmpegService.extractThumbnail(finalPath, thumbnailFilename);
 
+      // Get custom duration from request body if provided
+      const { customDurationSeconds } = req.body;
+
       // Create version record
       const version = await Video.create({
         parentId: parentVideo.id,
@@ -299,6 +302,7 @@ router.post(
         thumbnailPath: thumbnailPath,
         fileSizeBytes: metadata.size,
         durationSeconds: metadata.duration,
+        customDurationSeconds: customDurationSeconds ? Number(customDurationSeconds) : null,
         widthPixels: metadata.width,
         heightPixels: metadata.height,
         resolutionLabel: `${metadata.width}x${metadata.height}`,
@@ -336,9 +340,14 @@ router.post(
         }
       })();
 
+      // Calcular duração contabilizada: usar customDurationSeconds se disponível, senão 50%
+      const calculatedDuration = version.customDurationSeconds !== null && version.customDurationSeconds !== undefined
+        ? version.customDurationSeconds
+        : version.durationSeconds * 0.5;
+
       res.status(201).json({
         version,
-        calculatedDuration: version.durationSeconds * 0.5,
+        calculatedDuration,
         message: 'Versão adicional salva com sucesso',
       });
     } catch (error) {

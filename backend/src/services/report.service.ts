@@ -95,13 +95,19 @@ class ReportService {
 
     let totalSeconds = 0;
     for (const video of videos) {
-      // Parent video counts 100%
-      totalSeconds += video.durationSeconds;
+      // Parent video: usar customDurationSeconds se disponível, senão 100% da duração
+      const parentDuration = video.customDurationSeconds !== null && video.customDurationSeconds !== undefined
+        ? video.customDurationSeconds
+        : video.durationSeconds;
+      totalSeconds += parentDuration;
 
-      // Versions count 50%
+      // Versions: usar customDurationSeconds se disponível, senão 50% da duração
       if (video.versions) {
         for (const version of video.versions) {
-          totalSeconds += version.durationSeconds * 0.5;
+          const versionDuration = version.customDurationSeconds !== null && version.customDurationSeconds !== undefined
+            ? version.customDurationSeconds
+            : version.durationSeconds * 0.5;
+          totalSeconds += versionDuration;
         }
       }
     }
@@ -149,17 +155,29 @@ class ReportService {
       const profVideos = videos.filter(v => v.professionalId === professional.id);
 
       const videosWithCalc: VideoWithCalculation[] = profVideos.map(video => {
-        const versions = (video.versions || []).map(version => ({
-          video: version,
-          calculatedDuration: version.durationSeconds * 0.5,
-        }));
+        // Calcular duração do vídeo pai: usar customDurationSeconds se disponível, senão 100%
+        const parentCalculatedDuration = video.customDurationSeconds !== null && video.customDurationSeconds !== undefined
+          ? video.customDurationSeconds
+          : video.durationSeconds;
+
+        const versions = (video.versions || []).map(version => {
+          // Calcular duração da versão: usar customDurationSeconds se disponível, senão 50%
+          const versionCalculatedDuration = version.customDurationSeconds !== null && version.customDurationSeconds !== undefined
+            ? version.customDurationSeconds
+            : version.durationSeconds * 0.5;
+          
+          return {
+            video: version,
+            calculatedDuration: versionCalculatedDuration,
+          };
+        });
 
         const versionsDuration = versions.reduce((sum, v) => sum + v.calculatedDuration, 0);
-        const totalDuration = video.durationSeconds + versionsDuration;
+        const totalDuration = parentCalculatedDuration + versionsDuration;
 
         return {
           video,
-          calculatedDuration: video.durationSeconds,
+          calculatedDuration: parentCalculatedDuration,
           versions,
           totalDuration,
         };
@@ -174,8 +192,14 @@ class ReportService {
       };
     });
 
-    // Calculate totals
-    const totalVideos = videos.length;
+    // Calculate totals - incluir versões na contagem
+    let totalVideos = videos.length;
+    // Adicionar versões à contagem
+    for (const video of videos) {
+      if (video.versions && video.versions.length > 0) {
+        totalVideos += video.versions.length;
+      }
+    }
     const totalDuration = videosByProfessional.reduce((sum, p) => sum + p.totalDuration, 0);
 
     // Get usage info
@@ -243,17 +267,29 @@ class ReportService {
       const profVideos = videos.filter(v => v.professionalId === professional.id);
 
       const videosWithCalc: VideoWithCalculation[] = profVideos.map(video => {
-        const versions = (video.versions || []).map(version => ({
-          video: version,
-          calculatedDuration: version.durationSeconds * 0.5,
-        }));
+        // Calcular duração do vídeo pai: usar customDurationSeconds se disponível, senão 100%
+        const parentCalculatedDuration = video.customDurationSeconds !== null && video.customDurationSeconds !== undefined
+          ? video.customDurationSeconds
+          : video.durationSeconds;
+
+        const versions = (video.versions || []).map(version => {
+          // Calcular duração da versão: usar customDurationSeconds se disponível, senão 50%
+          const versionCalculatedDuration = version.customDurationSeconds !== null && version.customDurationSeconds !== undefined
+            ? version.customDurationSeconds
+            : version.durationSeconds * 0.5;
+          
+          return {
+            video: version,
+            calculatedDuration: versionCalculatedDuration,
+          };
+        });
 
         const versionsDuration = versions.reduce((sum, v) => sum + v.calculatedDuration, 0);
-        const totalDuration = video.durationSeconds + versionsDuration;
+        const totalDuration = parentCalculatedDuration + versionsDuration;
 
         return {
           video,
-          calculatedDuration: video.durationSeconds,
+          calculatedDuration: parentCalculatedDuration,
           versions,
           totalDuration,
         };
@@ -268,8 +304,14 @@ class ReportService {
       };
     });
 
-    // Calculate totals
-    const totalVideos = videos.length;
+    // Calculate totals - incluir versões na contagem
+    let totalVideos = videos.length;
+    // Adicionar versões à contagem
+    for (const video of videos) {
+      if (video.versions && video.versions.length > 0) {
+        totalVideos += video.versions.length;
+      }
+    }
     const totalDuration = videosByProfessional.reduce((sum, p) => sum + p.totalDuration, 0);
 
     return {

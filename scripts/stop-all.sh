@@ -4,7 +4,9 @@
 
 set -e
 
-PROJECT_DIR="/mnt/v/_VICTOR/Site/Pix Filmes/relatorios"
+# Diretório do projeto (detecta automaticamente)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$PROJECT_DIR"
 
 echo "🛑 Parando ambiente de desenvolvimento..."

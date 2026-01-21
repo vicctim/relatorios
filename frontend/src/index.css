@@ -96,6 +96,38 @@
 /* React DatePicker Custom Styles */
 .react-datepicker {
   @apply font-sans border-gray-200 dark:border-gray-600 dark:bg-gray-800 rounded-lg shadow-lg;
+  z-index: 9999 !important;
+}
+
+.react-datepicker-popper {
+  z-index: 9999 !important;
+  position: absolute !important;
+}
+
+.react-datepicker__portal {
+  z-index: 9999 !important;
+}
+
+.date-picker-popper {
+  z-index: 9999 !important;
+}
+
+/* Garantir que o calendário não seja cortado por overflow */
+.react-datepicker-popper[data-placement^="bottom"] {
+  margin-top: 8px !important;
+}
+
+.react-datepicker-popper[data-placement^="top"] {
+  margin-bottom: 8px !important;
+}
+
+/* Garantir que o calendário apareça mesmo em containers com scale */
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}
+
+.react-datepicker {
+  transform: none !important;
 }
 
 .react-datepicker__header {

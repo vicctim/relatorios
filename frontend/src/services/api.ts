@@ -129,9 +129,12 @@ export const videosApi = {
       },
     });
   },
-  uploadVersion: (parentId: number, file: File, onProgress?: (progress: number) => void) => {
+  uploadVersion: (parentId: number, file: File, customDurationSeconds?: number, onProgress?: (progress: number) => void) => {
     const formData = new FormData();
     formData.append('video', file);
+    if (customDurationSeconds !== undefined) {
+      formData.append('customDurationSeconds', customDurationSeconds.toString());
+    }
     return api.post(`/videos/${parentId}/versions`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: (progressEvent) => {
@@ -177,6 +180,14 @@ export const reportsApi = {
     const token = localStorage.getItem('token');
     return `/api/reports/export/pdf?startDate=${startDate}&endDate=${endDate}&dateField=${dateField}${token ? `&token=${token}` : ''}`;
   },
+  // History API
+  getHistory: () => api.get('/reports/history'),
+  getHistoryItem: (id: number) => api.get(`/reports/history/${id}`),
+  downloadHistory: (id: number) => {
+    const token = localStorage.getItem('token');
+    return `/api/reports/history/${id}/download${token ? `?token=${token}` : ''}`;
+  },
+  deleteHistory: (id: number) => api.delete(`/reports/history/${id}`),
 };
 
 // Logs API
@@ -201,8 +212,12 @@ export const sharesApi = {
     message?: string;
     expiresAt?: string;
     maxDownloads?: number;
+    customSlug?: string;
   }) => api.post('/shares', data),
   get: (token: string) => api.get(`/shares/${token}`),
   download: (token: string, videoIds?: number[]) =>
     api.post(`/shares/${token}/download`, { videoIds }, { responseType: 'blob' }),
+  list: () => api.get('/shares/list/my-shares'),
+  checkExisting: (videoIds: number[]) => api.post('/shares/check-existing', { videoIds }),
+  delete: (id: number) => api.delete(`/shares/${id}`),
 };

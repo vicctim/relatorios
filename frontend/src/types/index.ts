@@ -138,3 +138,20 @@ export interface ApiResponse<T> {
   message?: string;
   error?: string;
 }
+
+export interface ShareLink {
+  id: number;
+  token: string;
+  customSlug: string | null;
+  name: string | null;
+  message: string | null;
+  expiresAt: string | null;
+  downloads: number;
+  maxDownloads: number | null;
+  active: boolean;
+  createdBy: number;
+  createdAt: string;
+  updatedAt: string;
+  videos?: Video[];
+  creator?: User;
+}

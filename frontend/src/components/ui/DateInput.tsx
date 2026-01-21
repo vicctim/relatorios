@@ -63,18 +63,23 @@ export default function DateInput({
   CustomInput.displayName = 'CustomDateInput';
 
   return (
-    <DatePicker
-      selected={dateValue}
-      onChange={handleChange}
-      dateFormat="dd/MM/yyyy"
-      locale="pt-BR"
-      placeholderText={placeholder}
-      customInput={<CustomInput />}
-      showMonthDropdown
-      showYearDropdown
-      dropdownMode="select"
-      todayButton="Hoje"
-      isClearable={false}
-    />
+    <div className="relative" style={{ zIndex: 10 }}>
+      <DatePicker
+        selected={dateValue}
+        onChange={handleChange}
+        dateFormat="dd/MM/yyyy"
+        locale="pt-BR"
+        placeholderText={placeholder}
+        customInput={<CustomInput />}
+        showMonthDropdown
+        showYearDropdown
+        dropdownMode="select"
+        todayButton="Hoje"
+        isClearable={false}
+        popperClassName="date-picker-popper"
+        popperPlacement="bottom-start"
+        withPortal={false}
+      />
+    </div>
   );
 }

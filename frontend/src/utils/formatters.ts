@@ -1,14 +1,38 @@
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-export function formatDate(date: string | Date, formatStr: string = 'dd/MM/yyyy'): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return format(dateObj, formatStr, { locale: ptBR });
+export function formatDate(date: string | Date | null | undefined, formatStr: string = 'dd/MM/yyyy'): string {
+  if (!date) return '-';
+  
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    
+    if (!isValid(dateObj)) {
+      return '-';
+    }
+    
+    return format(dateObj, formatStr, { locale: ptBR });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '-';
+  }
 }
 
-export function formatDateTime(date: string | Date): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
-  return format(dateObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+export function formatDateTime(date: string | Date | null | undefined): string {
+  if (!date) return '-';
+  
+  try {
+    const dateObj = typeof date === 'string' ? parseISO(date) : date;
+    
+    if (!isValid(dateObj)) {
+      return '-';
+    }
+    
+    return format(dateObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+  } catch (error) {
+    console.error('Error formatting datetime:', error);
+    return '-';
+  }
 }
 
 export function formatMonthYear(month: number, year: number): string {
@@ -17,12 +41,15 @@ export function formatMonthYear(month: number, year: number): string {
 }
 
 export function formatDuration(seconds: number): string {
-  if (seconds < 60) {
-    return `${Math.round(seconds)}s`;
+  // Arredondar segundos para evitar frações
+  const roundedSeconds = Math.round(seconds);
+  
+  if (roundedSeconds < 60) {
+    return `${roundedSeconds}s`;
   }
 
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round(seconds % 60);
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remainingSeconds = roundedSeconds % 60;
 
   if (minutes < 60) {
     return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
@@ -50,6 +77,42 @@ export function formatDurationDetailed(seconds: number): string {
   if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
 
   return parts.join(' ');
+}
+
+/**
+ * Formata duração com ênfase nos segundos (para exibição visual)
+ * Retorna objeto com timeFormatted (h/m) e secondsOnly (apenas segundos)
+ */
+export function formatTimeWithEmphasis(seconds: number): { timeFormatted: string; secondsOnly: string } {
+  const totalSeconds = Math.round(seconds);
+  
+  if (seconds < 60) {
+    return {
+      timeFormatted: '',
+      secondsOnly: `${totalSeconds}s`
+    };
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+
+  if (minutes < 60) {
+    const timeStr = remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}` : `${minutes}m 0`;
+    return {
+      timeFormatted: timeStr,
+      secondsOnly: `${totalSeconds}s`
+    };
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  const timeStr = remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h 0m`;
+  
+  return {
+    timeFormatted: timeStr,
+    secondsOnly: `${totalSeconds}s`
+  };
 }
 
 export function formatFileSize(bytes: number): string {

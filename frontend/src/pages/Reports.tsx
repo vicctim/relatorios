@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, Play, FileText, Clock, Calendar } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, FileText, Clock, Calendar, Trash2 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import { ptBR } from 'date-fns/locale';
-import { reportsApi, videosApi } from '../services/api';
+import { reportsApi } from '../services/api';
 import { ReportData } from '../types';
-import { formatMonthYear, formatDuration, formatDate, formatPercentage } from '../utils/formatters';
+import { formatMonthYear, formatDuration, formatDate, formatPercentage, formatTimeWithEmphasis } from '../utils/formatters';
 import { LoadingSpinner, Modal } from '../components/ui';
+import toast from 'react-hot-toast';
 import 'react-datepicker/dist/react-datepicker.css';
 
 export default function Reports() {
@@ -15,7 +16,6 @@ export default function Reports() {
     const now = new Date();
     return { month: now.getMonth() + 1, year: now.getFullYear() };
   });
-  const [previewVideo, setPreviewVideo] = useState<{ id: number; title: string } | null>(null);
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
@@ -25,8 +25,14 @@ export default function Reports() {
   const [exportPreview, setExportPreview] = useState<{ totalVideos: number; totalDuration: number } | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
+  // History state
+  const [history, setHistory] = useState<any[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
   useEffect(() => {
     loadReport();
+    loadHistory();
   }, [selectedMonth]);
 
   // Load preview when dates change
@@ -61,12 +67,64 @@ export default function Reports() {
       setExportPreview({
         totalVideos: response.data.totalVideos,
         totalDuration: response.data.totalDuration,
+        parentVideosCount: response.data.parentVideosCount,
+        versionsCount: response.data.versionsCount,
       });
     } catch (error) {
       console.error('Error loading export preview:', error);
       setExportPreview(null);
     } finally {
       setIsLoadingPreview(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const response = await reportsApi.getHistory();
+      setHistory(response.data);
+    } catch (error) {
+      console.error('Error loading history:', error);
+      toast.error('Erro ao carregar histórico de relatórios');
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  const handleDeleteReport = async (id: number) => {
+    if (!confirm('Tem certeza que deseja excluir este relatório?')) {
+      return;
+    }
+
+    setDeletingId(id);
+    try {
+      await reportsApi.deleteHistory(id);
+      toast.success('Relatório excluído com sucesso');
+      loadHistory();
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      toast.error('Erro ao excluir relatório');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
+
+  const getReportTitle = (report: any) => {
+    if (report.type === 'monthly') {
+      const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+      return `Relatório de ${monthNames[report.month - 1]} de ${report.year}`;
+    } else {
+      const start = new Date(report.startDate).toLocaleDateString('pt-BR');
+      const end = new Date(report.endDate).toLocaleDateString('pt-BR');
+      const fieldLabel = report.dateField === 'completionDate' ? 'Conclusão' : 'Solicitação';
+      return `Relatório ${start} a ${end} (${fieldLabel})`;
     }
   };
 
@@ -87,13 +145,25 @@ export default function Reports() {
     });
   };
 
-  const handleExport = () => {
-    if (!exportStartDate || !exportEndDate) return;
+  const [isExporting, setIsExporting] = useState(false);
 
+  const handleExport = () => {
+    if (!exportStartDate || !exportEndDate || isExporting) return;
+
+    setIsExporting(true);
     const startStr = exportStartDate.toISOString().split('T')[0];
     const endStr = exportEndDate.toISOString().split('T')[0];
     const url = reportsApi.getExportPdfUrl(startStr, endStr, exportDateField);
+    
+    // Abrir em nova aba
     window.open(url, '_blank');
+    
+    // Aguardar e recarregar histórico após o download ser iniciado
+    setTimeout(() => {
+      loadHistory();
+      setIsExporting(false);
+      setShowExportModal(false);
+    }, 3000);
   };
 
   const openExportModal = () => {
@@ -118,45 +188,43 @@ export default function Reports() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Relatórios</h1>
-          <p className="text-gray-500 dark:text-gray-400">
-            Visualize os vídeos por mês
-          </p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white text-center">Relatórios</h1>
+        <p className="text-gray-500 dark:text-gray-400 text-center">
+          Visualize e exporte relatórios por período
+        </p>
+      </div>
 
-        <div className="flex items-center gap-4">
-          {/* Export Button */}
+      {/* Centered Month Navigation + Export */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 shadow-md">
           <button
-            onClick={openExportModal}
-            className="btn-primary flex items-center gap-2"
+            onClick={() => navigateMonth('prev')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Mês anterior"
           >
-            <FileText className="w-5 h-5" />
-            Exportar Relatório
+            <ChevronLeft className="w-6 h-6" />
           </button>
-
-          {/* Month Navigation */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigateMonth('prev')}
-              className="btn-ghost p-2"
-              title="Mês anterior"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <span className="text-lg font-medium text-gray-900 dark:text-white min-w-[200px] text-center capitalize">
-              {formatMonthYear(selectedMonth.month, selectedMonth.year)}
-            </span>
-            <button
-              onClick={() => navigateMonth('next')}
-              className="btn-ghost p-2"
-              title="Próximo mês"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+          <span className="text-2xl font-bold text-gray-900 dark:text-white min-w-[250px] text-center capitalize">
+            {formatMonthYear(selectedMonth.month, selectedMonth.year)}
+          </span>
+          <button
+            onClick={() => navigateMonth('next')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Próximo mês"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
         </div>
+
+        {/* Export Button */}
+        <button
+          onClick={openExportModal}
+          className="btn-primary flex items-center gap-2 px-6 py-3 shadow-md"
+        >
+          <FileText className="w-5 h-5" />
+          Exportar Relatório Personalizado
+        </button>
       </div>
 
       {isLoading ? (
@@ -174,9 +242,16 @@ export default function Reports() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Utilizado</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatDuration(report.usage.used)}
-                  </p>
+                  <div className="mt-1">
+                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                      {formatTimeWithEmphasis(report.usage.used).secondsOnly}
+                    </span>
+                    {formatTimeWithEmphasis(report.usage.used).timeFormatted && (
+                      <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                        ({formatTimeWithEmphasis(report.usage.used).timeFormatted})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="mt-4">
@@ -199,14 +274,42 @@ export default function Reports() {
 
             <div className="card p-6">
               <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Restante</p>
+                  <div className="mt-1">
+                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                      {formatTimeWithEmphasis(report.usage.remaining).secondsOnly}
+                    </span>
+                    {formatTimeWithEmphasis(report.usage.remaining).timeFormatted && (
+                      <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                        ({formatTimeWithEmphasis(report.usage.remaining).timeFormatted})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="card p-6">
+              <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                   <FileText className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">Limite</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatDuration(report.usage.limit)}
-                  </p>
+                  <div className="mt-1">
+                    <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                      {formatTimeWithEmphasis(report.usage.limit).secondsOnly}
+                    </span>
+                    {formatTimeWithEmphasis(report.usage.limit).timeFormatted && (
+                      <span className="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2">
+                        ({formatTimeWithEmphasis(report.usage.limit).timeFormatted})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               {report.usage.rollover > 0 && (
@@ -215,124 +318,100 @@ export default function Reports() {
                 </p>
               )}
             </div>
-
-            <div className="card p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                  <Clock className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Restante</p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatDuration(report.usage.remaining)}
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
 
-          {/* Videos List */}
-          {report.videosByProfessional.length === 0 ? (
-            <div className="card p-12 text-center">
-              <FileText className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-500">Nenhum vídeo neste mês</p>
+          {/* Generated Reports History */}
+          <div className="card mt-8">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Histórico de Relatórios Exportados
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Gerencie os relatórios que você já exportou
+              </p>
             </div>
-          ) : (
-            <div className="card">
-              <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                {report.videosByProfessional.flatMap(({ videos }) =>
-                  videos.map(({ video, versions, totalDuration: videoDuration }) => (
-                    <div key={video.id} className="p-4">
-                      <div className="flex items-start gap-4">
-                        {/* Preview thumbnail */}
-                        <button
-                          onClick={() => setPreviewVideo({ id: video.id, title: video.title })}
-                          className="w-24 h-14 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors relative overflow-hidden group"
-                        >
-                          <img
-                            src={videosApi.getThumbnailUrl(video.id)}
-                            alt={video.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
-                            <Play className="w-6 h-6 text-white" />
-                          </div>
-                        </button>
 
-                        {/* Video info */}
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-gray-900 dark:text-white truncate">
-                            {video.title}
-                          </h4>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
-                            <span>{video.resolutionLabel}</span>
-                            <span>{formatDuration(video.durationSeconds)}</span>
-                            <span>Solicitado: {formatDate(video.requestDate)}</span>
-                            <span>Concluído: {formatDate(video.completionDate)}</span>
-                          </div>
-                          {video.isTv && video.tvTitle && (
-                            <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                              TV: {video.tvTitle}
-                            </p>
-                          )}
-
-                          {/* Total */}
-                          <p className="mt-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-                            Total contabilizado: {formatDuration(videoDuration)}
-                            {versions.length > 0 && (
-                              <span className="ml-2 text-green-600 dark:text-green-400">
-                                (+ {formatDuration(versions.reduce((sum, v) => sum + v.calculatedDuration, 0))} de {versions.length} versã{versions.length === 1 ? 'o' : 'ões'})
+            <div className="p-6">
+              {isLoadingHistory ? (
+                <div className="flex items-center justify-center py-12">
+                  <LoadingSpinner size="lg" />
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">Nenhum relatório exportado ainda</p>
+                  <p className="text-sm mt-2">
+                    Os relatórios exportados aparecerão aqui
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {history.map((report) => (
+                    <div
+                      key={report.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-750 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <FileText className="w-5 h-5 text-primary-600 dark:text-primary-400 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                              {getReportTitle(report)}
+                            </h3>
+                            <div className="flex items-center gap-4 mt-1 text-xs text-gray-500 dark:text-gray-400">
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                {formatDate(new Date(report.createdAt))}
                               </span>
-                            )}
-                          </p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex gap-2">
-                          <a
-                            href={videosApi.getDownloadUrl(video.id)}
-                            className="btn-ghost p-2"
-                            title="Download"
-                          >
-                            <Download className="w-5 h-5" />
-                          </a>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {formatDuration(report.totalDuration)}
+                              </span>
+                              <span>{report.totalVideos} vídeo(s)</span>
+                              <span>{formatFileSize(report.fileSize)}</span>
+                              {report.exporter && (
+                                <span className="text-gray-400 dark:text-gray-500">
+                                  por {report.exporter.name}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <a
+                          href={reportsApi.downloadHistory(report.id)}
+                          download
+                          className="p-2 text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 rounded-lg transition-colors"
+                          title="Baixar relatório"
+                        >
+                          <Download className="w-5 h-5" />
+                        </a>
+                        <button
+                          onClick={() => handleDeleteReport(report.id)}
+                          disabled={deletingId === report.id}
+                          className="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50"
+                          title="Excluir relatório"
+                        >
+                          {deletingId === report.id ? (
+                            <LoadingSpinner size="sm" />
+                          ) : (
+                            <Trash2 className="w-5 h-5" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </>
       ) : (
         <div className="card p-12 text-center">
           <p className="text-gray-500">Erro ao carregar relatório</p>
         </div>
       )}
-
-      {/* Video Preview Modal */}
-      <Modal
-        isOpen={!!previewVideo}
-        onClose={() => setPreviewVideo(null)}
-        title={previewVideo?.title}
-        size="xl"
-      >
-        {previewVideo && (
-          <div className="aspect-video bg-black rounded-lg overflow-hidden">
-            <video
-              src={videosApi.getStreamUrl(previewVideo.id)}
-              controls
-              autoPlay
-              className="w-full h-full"
-            />
-          </div>
-        )}
-      </Modal>
 
       {/* Export Modal */}
       <Modal
@@ -422,7 +501,12 @@ export default function Reports() {
                   <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
                     <p className="text-xs text-gray-500 uppercase">Vídeos encontrados</p>
                     <p className="text-xl font-bold text-gray-900 dark:text-white">
-                      {exportPreview.totalVideos}
+                      {exportPreview.parentVideosCount || exportPreview.totalVideos} vídeo{(exportPreview.parentVideosCount || exportPreview.totalVideos) !== 1 ? 's' : ''}
+                      {exportPreview.versionsCount && exportPreview.versionsCount > 0 && (
+                        <span className="text-sm font-normal text-primary-600 dark:text-primary-400 ml-1">
+                          + {exportPreview.versionsCount} {exportPreview.versionsCount === 1 ? 'versão' : 'versões'}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <div className="bg-white dark:bg-gray-700 rounded-lg p-3">
@@ -446,11 +530,11 @@ export default function Reports() {
             </button>
             <button
               onClick={handleExport}
-              disabled={!exportStartDate || !exportEndDate || !exportPreview || exportPreview.totalVideos === 0}
+              disabled={!exportStartDate || !exportEndDate || !exportPreview || exportPreview.totalVideos === 0 || isExporting}
               className="btn-primary flex items-center gap-2"
             >
               <Download className="w-5 h-5" />
-              Exportar PDF
+              {isExporting ? 'Exportando...' : 'Exportar PDF'}
             </button>
           </div>
         </div>

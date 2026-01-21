@@ -20,6 +20,8 @@ npm run install:all
 npm run dev
 ```
 
+> 📚 **Documentação completa**: Consulte a pasta [`docs/`](./docs/) para guias detalhados, notas de desenvolvimento e documentação de deploy.
+
 Isso vai:
 - ✅ Verificar e iniciar MySQL no Docker
 - ✅ Iniciar Backend na porta 3001
@@ -42,10 +44,11 @@ Isso vai:
 
 ## 📚 Documentação Completa
 
-- **[QUICK_START.md](QUICK_START.md)** - Guia rápido de uso
-- **[COMANDOS_NPM.md](COMANDOS_NPM.md)** - Todos os comandos disponíveis
+- **[docs/guides/QUICK_START.md](docs/guides/QUICK_START.md)** - Guia rápido de uso
+- **[docs/guides/COMANDOS_NPM.md](docs/guides/COMANDOS_NPM.md)** - Todos os comandos disponíveis
 - **[docs/](docs/)** - Documentação técnica completa
-- **[AUDITORIA_SEGURANCA.md](AUDITORIA_SEGURANCA.md)** - Análise de segurança
+- **[docs/notes/AUDITORIA_SEGURANCA.md](docs/notes/AUDITORIA_SEGURANCA.md)** - Análise de segurança
+- **[docs/deploy/](docs/deploy/)** - Documentação de deploy e infraestrutura
 
 ## 🛠️ Comandos Principais
 

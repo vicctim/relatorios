@@ -9,6 +9,8 @@ backend.pid
 frontend.pid
 backend.log
 frontend.log
+frontend-output.log
+backend-output.log
 *.pid
 uploads/
 .vscode/

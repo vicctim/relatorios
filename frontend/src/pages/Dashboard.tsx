@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, FileVideo, TrendingUp, Calendar, Play, Download, Share2, Archive, Loader2 } from 'lucide-react';
-import { reportsApi, videosApi } from '../services/api';
+import { Clock, FileVideo, TrendingUp, Calendar, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { reportsApi, sharesApi } from '../services/api';
 import { DashboardStats } from '../types';
-import { formatDuration, formatDate, formatMonthYear } from '../utils/formatters';
+import { formatMonthYear, formatTimeWithEmphasis } from '../utils/formatters';
 import { LoadingSpinner } from '../components/ui';
-import ShareModal from '../components/ShareModal';
 import toast from 'react-hot-toast';
 
 export default function Dashboard() {
@@ -13,14 +12,11 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
-
-  // Share state
-  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [shareVideoIds, setShareVideoIds] = useState<number[]>([]);
+  const [totalShares, setTotalShares] = useState(0);
 
   useEffect(() => {
     loadStats();
+    loadShares();
   }, [selectedMonth, selectedYear]);
 
   const loadStats = async () => {
@@ -36,31 +32,29 @@ export default function Dashboard() {
     }
   };
 
-  const handleDownloadZip = async () => {
-    if (!stats?.recentVideos.length) return;
+  const loadShares = async () => {
     try {
-      setIsDownloadingZip(true);
-      const videoIds = stats.recentVideos.map(v => v.id);
-      const response = await videosApi.downloadZip(videoIds);
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `videos-${selectedMonth}-${selectedYear}.zip`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      toast.success('Download iniciado');
+      const response = await sharesApi.list();
+      setTotalShares(response.data.length);
     } catch (error) {
-      console.error('Error downloading zip:', error);
-      toast.error('Erro ao baixar arquivo ZIP');
-    } finally {
-      setIsDownloadingZip(false);
+      console.error('Error loading shares:', error);
     }
   };
 
-  const handleShare = (ids: number[]) => {
-    setShareVideoIds(ids);
-    setIsShareModalOpen(true);
+  const navigateMonth = (direction: 'prev' | 'next') => {
+    let newMonth = selectedMonth + (direction === 'next' ? 1 : -1);
+    let newYear = selectedYear;
+
+    if (newMonth > 12) {
+      newMonth = 1;
+      newYear++;
+    } else if (newMonth < 1) {
+      newMonth = 12;
+      newYear--;
+    }
+
+    setSelectedMonth(newMonth);
+    setSelectedYear(newYear);
   };
 
   if (isLoading) {
@@ -81,17 +75,9 @@ export default function Dashboard() {
 
   const usagePercentage = (stats.currentMonth.used / stats.currentMonth.limit) * 100;
 
-  const currentYearOptions = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
-  const months = [
-    { value: 1, label: 'Janeiro' }, { value: 2, label: 'Fevereiro' }, { value: 3, label: 'Março' },
-    { value: 4, label: 'Abril' }, { value: 5, label: 'Maio' }, { value: 6, label: 'Junho' },
-    { value: 7, label: 'Julho' }, { value: 8, label: 'Agosto' }, { value: 9, label: 'Setembro' },
-    { value: 10, label: 'Outubro' }, { value: 11, label: 'Novembro' }, { value: 12, label: 'Dezembro' }
-  ];
-
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
+      {/* Header with Month Navigation */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
@@ -99,54 +85,53 @@ export default function Dashboard() {
             Visão geral de {formatMonthYear(selectedMonth, selectedYear)}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-primary-500 focus:border-primary-500"
+        
+        {/* Month Navigation */}
+        <div className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-lg p-2 border border-gray-200 dark:border-gray-700">
+          <button
+            onClick={() => navigateMonth('prev')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Mês anterior"
           >
-            {months.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:ring-primary-500 focus:border-primary-500"
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-lg font-medium text-gray-900 dark:text-white min-w-[180px] text-center capitalize">
+            {formatMonthYear(selectedMonth, selectedYear)}
+          </span>
+          <button
+            onClick={() => navigateMonth('next')}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+            title="Próximo mês"
           >
-            {currentYearOptions.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Tempo Utilizado */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Tempo Utilizado</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {formatDuration(stats.currentMonth.used)}
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  ({Math.round(stats.currentMonth.used)}s)
-                </span>
-              </p>
-            </div>
+        <div className="card p-6 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center">
               <Clock className="w-6 h-6 text-primary-600 dark:text-primary-400" />
             </div>
           </div>
-          <div className="mt-4">
-            <div className="flex justify-between text-sm mb-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Tempo Utilizado</p>
+          <div className="mb-3">
+            <span className="text-3xl font-bold text-gray-900 dark:text-white">
+              {formatTimeWithEmphasis(stats.currentMonth.used).secondsOnly}
+            </span>
+            {formatTimeWithEmphasis(stats.currentMonth.used).timeFormatted && (
+              <span className="text-base font-normal text-gray-500 dark:text-gray-400 ml-2">
+                ({formatTimeWithEmphasis(stats.currentMonth.used).timeFormatted})
+              </span>
+            )}
+          </div>
+          <div className="mt-3">
+            <div className="flex justify-between text-xs mb-1">
               <span className="text-gray-500">Progresso</span>
-              <span className="text-gray-700 dark:text-gray-300">
+              <span className="text-gray-700 dark:text-gray-300 font-medium">
                 {Math.round(usagePercentage)}%
               </span>
             </div>
@@ -165,198 +150,119 @@ export default function Dashboard() {
         </div>
 
         {/* Limite do Mês */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Limite do Mês</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {formatDuration(stats.currentMonth.limit)}
-              </p>
-            </div>
+        <div className="card p-6 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
-          {stats.currentMonth.rollover > 0 && (
-            <p className="mt-3 text-sm text-gray-500">
-              Inclui {formatDuration(stats.currentMonth.rollover)} de rollover
-            </p>
-          )}
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Limite do Mês</p>
+          <div>
+            <span className="text-3xl font-bold text-gray-900 dark:text-white">
+              {formatTimeWithEmphasis(stats.currentMonth.limit).secondsOnly}
+            </span>
+            {formatTimeWithEmphasis(stats.currentMonth.limit).timeFormatted && (
+              <span className="text-base font-normal text-gray-500 dark:text-gray-400 ml-2">
+                ({formatTimeWithEmphasis(stats.currentMonth.limit).timeFormatted})
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Tempo Restante */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Tempo Restante</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {formatDuration(stats.currentMonth.remaining)}
-              </p>
-            </div>
+        <div className="card p-6 hover:shadow-lg transition-all duration-300">
+          <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
               <Calendar className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
           </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Tempo Restante</p>
+          <div>
+            <span className="text-3xl font-bold text-gray-900 dark:text-white">
+              {formatTimeWithEmphasis(stats.currentMonth.remaining).secondsOnly}
+            </span>
+            {formatTimeWithEmphasis(stats.currentMonth.remaining).timeFormatted && (
+              <span className="text-base font-normal text-gray-500 dark:text-gray-400 ml-2">
+                ({formatTimeWithEmphasis(stats.currentMonth.remaining).timeFormatted})
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Total de Vídeos */}
-        <div className="card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Total de Vídeos</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-                {stats.totalVideos}
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+        <Link to="/videos" className="card p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
               <FileVideo className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
           </div>
-          <p className="mt-3 text-sm text-gray-500">
-            {formatDuration(stats.totalDuration)} no total
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total de Vídeos</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            {stats.totalVideos}
           </p>
-        </div>
+          <p className="mt-2 text-xs text-gray-500">
+            Clique para ver todos
+          </p>
+        </Link>
+
+        {/* Compartilhamentos */}
+        <Link to="/shares" className="card p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Share2 className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+            </div>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Compartilhamentos</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white">
+            {totalShares}
+          </p>
+          <p className="mt-2 text-xs text-gray-500">
+            Links criados
+          </p>
+        </Link>
       </div>
 
-      {/* Videos List */}
-      <div className="card">
-        <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Vídeos ({stats.recentVideos.length})
-          </h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownloadZip}
-              disabled={isDownloadingZip || !stats.recentVideos.length}
-              className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-            >
-              {isDownloadingZip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Archive className="w-4 h-4" />}
-              Baixar ZIP
-            </button>
-            <button
-              onClick={() => handleShare(stats.recentVideos.map(v => v.id))}
-              disabled={!stats.recentVideos.length}
-              className="px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-sm disabled:opacity-50"
-            >
-              <Share2 className="w-4 h-4" />
-              Compartilhar
-            </button>
+      {/* Quick Actions */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link
+          to="/videos"
+          className="card p-6 hover:shadow-lg transition-all duration-300 group flex items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-xl bg-primary-100 dark:bg-primary-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <FileVideo className="w-6 h-6 text-primary-600 dark:text-primary-400" />
           </div>
-        </div>
-
-        {stats.recentVideos.length === 0 ? (
-          <div className="p-12 text-center">
-            <FileVideo className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-500">Nenhum vídeo encontrado neste mês</p>
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Gerenciar Vídeos</h3>
+            <p className="text-sm text-gray-500">Ver, editar e compartilhar</p>
           </div>
-        ) : (
-          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {stats.recentVideos.map((video) => (
-              <div key={video.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
-                <div className="flex items-start gap-4">
-                  {/* Thumbnail */}
-                  <div className="w-32 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-                    {video.thumbnailPath ? (
-                      <img
-                        src={videosApi.getThumbnailUrl(video.id)}
-                        alt={video.title}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                        }}
-                      />
-                    ) : null}
-                    <div className={`${video.thumbnailPath ? 'hidden' : ''} flex items-center justify-center absolute inset-0`}>
-                      <Play className="w-8 h-8 text-gray-400" />
-                    </div>
-                  </div>
+        </Link>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-medium text-gray-900 dark:text-white">
-                          {video.title}
-                        </h3>
-                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                          <span>{video.resolutionLabel}</span>
-                          <span>{formatDuration(video.durationSeconds)}</span>
-                          <span>{formatDate(video.requestDate)}</span>
-                        </div>
-                        {video.professional && (
-                          <p className="text-sm text-gray-400 mt-1">
-                            Editor: {video.professional.name}
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleShare([video.id])}
-                          className="p-2 text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                          title="Compartilhar"
-                        >
-                          <Share2 className="w-5 h-5" />
-                        </button>
-                        <Link
-                          to={`/videos/${video.id}`}
-                          className="p-2 text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                          title="Visualizar"
-                        >
-                          <Play className="w-5 h-5" />
-                        </Link>
-                        <a
-                          href={videosApi.getDownloadUrl(video.id)}
-                          className="p-2 text-gray-500 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-                          title="Download"
-                        >
-                          <Download className="w-5 h-5" />
-                        </a>
-                      </div>
-                    </div>
-
-                    {/* Versions - Modern Card View */}
-                    {video.versions && video.versions.length > 0 && (
-                      <div className="mt-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700">
-                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-2">
-                          <Archive className="w-3 h-3" />
-                          Versões ({video.versions.length})
-                        </p>
-                        <div className="space-y-2">
-                          {video.versions.map(version => (
-                            <div key={version.id} className="flex items-center justify-between text-sm bg-white dark:bg-gray-800 p-2 rounded border border-gray-200 dark:border-gray-700">
-                              <div className="flex items-center gap-3">
-                                <span className="text-gray-700 dark:text-gray-300 font-medium">{version.resolutionLabel}</span>
-                                <span className="text-gray-400 text-xs">{formatDuration(version.durationSeconds)}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <a
-                                  href={videosApi.getDownloadUrl(version.id)}
-                                  className="text-gray-500 hover:text-primary-600"
-                                  title="Download Versão"
-                                >
-                                  <Download className="w-4 h-4" />
-                                </a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+        <Link
+          to="/reports"
+          className="card p-6 hover:shadow-lg transition-all duration-300 group flex items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
-        )}
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Relatórios</h3>
+            <p className="text-sm text-gray-500">Visualizar e exportar</p>
+          </div>
+        </Link>
+
+        <Link
+          to="/shares"
+          className="card p-6 hover:shadow-lg transition-all duration-300 group flex items-center gap-4"
+        >
+          <div className="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Share2 className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900 dark:text-white">Compartilhamentos</h3>
+            <p className="text-sm text-gray-500">Gerenciar links</p>
+          </div>
+        </Link>
       </div>
-
-      <ShareModal
-        isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        videoIds={shareVideoIds}
-      />
     </div>
   );
 }

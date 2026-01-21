@@ -9,8 +9,9 @@ const videosDir = path.join(uploadsDir, 'videos');
 const logosDir = path.join(uploadsDir, 'logos');
 const tempDir = path.join(uploadsDir, 'temp');
 const thumbnailsDir = path.join(uploadsDir, 'thumbnails');
+const reportsDir = path.join(uploadsDir, 'reports');
 
-[uploadsDir, videosDir, logosDir, tempDir, thumbnailsDir].forEach(dir => {
+[uploadsDir, videosDir, logosDir, tempDir, thumbnailsDir, reportsDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -96,4 +97,5 @@ export const directories = {
   logos: logosDir,
   temp: tempDir,
   thumbnails: thumbnailsDir,
+  reports: reportsDir,
 };

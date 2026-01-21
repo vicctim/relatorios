@@ -10,6 +10,7 @@ import Upload from './pages/Upload';
 import UploadVersion from './pages/UploadVersion';
 import Videos from './pages/Videos';
 import Reports from './pages/Reports';
+import Shares from './pages/Shares';
 import Users from './pages/admin/Users';
 import Professionals from './pages/admin/Professionals';
 import Settings from './pages/admin/Settings';
@@ -87,12 +88,13 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/videos" element={<Videos />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/shares" element={<Shares />} />
 
-        {/* Editor only */}
+        {/* Editor and Admin */}
         <Route
           path="/upload"
           element={
-            <ProtectedRoute allowedRoles={['editor']}>
+            <ProtectedRoute allowedRoles={['editor', 'admin']}>
               <Upload />
             </ProtectedRoute>
           }
@@ -100,7 +102,7 @@ export default function App() {
         <Route
           path="/videos/:id/versions"
           element={
-            <ProtectedRoute allowedRoles={['editor']}>
+            <ProtectedRoute allowedRoles={['editor', 'admin']}>
               <UploadVersion />
             </ProtectedRoute>
           }
