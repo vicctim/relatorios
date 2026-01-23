@@ -101,20 +101,50 @@ openssl rand -base64 32
 
 ## 🐳 Passo 3: Deploy via Portainer
 
-### 3.1 Criar Stack
+### 3.1 Escolher Método de Deploy
+
+**Opção A: Usar Imagens do CI/CD (Recomendado) ⚡**
+- Mais rápido (não precisa buildar na VPS)
+- Usa imagens pré-buildadas do GitHub Container Registry
+- Compose path: `docker-compose.registry.yml`
+- **Requer:** Login no Docker (ver passo 3.2)
+
+**Opção B: Build Local na VPS**
+- Builda as imagens diretamente na VPS
+- Compose path: `docker-compose.portainer.yml`
+- Mais lento, mas não requer autenticação
+
+### 3.2 Login no Docker (Apenas para Opção A)
+
+Se escolheu usar imagens do CI/CD, faça login:
+
+```bash
+# Criar Personal Access Token no GitHub:
+# Settings → Developer settings → Personal access tokens → Tokens (classic)
+# Permissões: read:packages
+
+# Login no Docker
+docker login ghcr.io
+# Username: vicctim
+# Password: <seu-token>
+```
+
+### 3.3 Criar Stack
 
 1. Acesse Portainer: `https://seu-ip:9443`
 2. **Stacks** → **Add stack**
 3. Nome: `relatorios`
 
-**Opção A: Repository (Recomendado)**
+**Se Opção A (CI/CD):**
+- Repository URL: `https://github.com/vicctim/relatorios.git`
+- Repository reference: `main`
+- Compose path: `docker-compose.registry.yml`
+
+**Se Opção B (Build Local):**
 - Repository URL: `https://github.com/vicctim/relatorios.git`
 - Repository reference: `main`
 - Compose path: `docker-compose.portainer.yml`
 - Build method: **Use BuildKit**
-
-**Opção B: Upload**
-- Upload do arquivo `docker-compose.portainer.yml`
 
 ### 3.2 Environment Variables
 
@@ -300,7 +330,30 @@ crontab -e
 
 ## 🔄 Atualizações Futuras
 
-### Atualizar Código
+### Atualizar Código (Com CI/CD)
+
+Se estiver usando `docker-compose.registry.yml`:
+
+```bash
+# Na VPS
+cd /opt/relatorios
+git pull origin main
+
+# Pull das novas imagens
+docker pull ghcr.io/vicctim/relatorios/backend:latest
+docker pull ghcr.io/vicctim/relatorios/frontend:latest
+
+# Recriar containers
+docker compose -f docker-compose.registry.yml up -d --force-recreate
+```
+
+**No Portainer:**
+1. Stacks → relatorios → Editor
+2. Clique em "Update the stack"
+3. Marque "Recreate the containers"
+4. Deploy
+
+### Atualizar Código (Build Local)
 
 ```bash
 # Na VPS
