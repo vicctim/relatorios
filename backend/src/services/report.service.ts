@@ -51,11 +51,18 @@ class ReportService {
           prevYear -= 1;
         }
 
-        const prevUsage = await this.getMonthUsedSeconds(prevMonth, prevYear);
-        const prevRemaining = (baseLimit ?? 1100) - prevUsage;
-        if (prevRemaining > 0) {
-          rollover += prevRemaining;
+        // Verificar se há vídeos no mês anterior antes de calcular rollover
+        const prevMonthHasVideos = await this.monthHasVideos(prevMonth, prevYear);
+        
+        // Só calcular rollover se o mês anterior realmente teve vídeos
+        if (prevMonthHasVideos) {
+          const prevUsage = await this.getMonthUsedSeconds(prevMonth, prevYear);
+          const prevRemaining = (baseLimit ?? 1100) - prevUsage;
+          if (prevRemaining > 0) {
+            rollover += prevRemaining;
+          }
         }
+        // Se não há vídeos no mês anterior, não há rollover daquele mês
       }
     }
 
@@ -126,6 +133,26 @@ class ReportService {
     }
 
     return totalSeconds;
+  }
+
+  /**
+   * Check if a month has any videos (to determine if rollover should be calculated)
+   */
+  async monthHasVideos(month: number, year: number): Promise<boolean> {
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+
+    const count = await Video.count({
+      where: {
+        parentId: null,
+        includeInReport: true,
+        requestDate: {
+          [Op.between]: [startDate, endDate],
+        },
+      },
+    });
+
+    return count > 0;
   }
 
   /**
