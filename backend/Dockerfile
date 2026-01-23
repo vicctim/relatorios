@@ -55,6 +55,11 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/package-lock.json ./package-lock.json
 
+# Copiar arquivos de configuração do Sequelize
+COPY --from=build /app/.sequelizerc ./.sequelizerc
+COPY --from=build /app/config ./config
+COPY --from=build /app/migrations ./migrations
+
 # Copiar script de entrypoint
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN chmod +x /app/docker-entrypoint.sh
