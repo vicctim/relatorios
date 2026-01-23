@@ -69,6 +69,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_SHARE_URL: ${VITE_SHARE_URL:-}
     container_name: relatorios-frontend
     restart: always
     networks:
