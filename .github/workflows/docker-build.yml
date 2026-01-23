@@ -73,13 +73,22 @@ jobs:
       - name: Make backend image public
         if: github.event_name != 'pull_request'
         run: |
-          PACKAGE_NAME=$(echo "${{ env.BACKEND_IMAGE_NAME }}" | tr '/' '-')
+          # GitHub Container Registry usa formato: owner-repo-package
+          PACKAGE_NAME="relatorios-backend"
+          # Tentar como usuário primeiro, depois como org
+          curl -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/user/packages/container/$PACKAGE_NAME/visibility" \
+            -d '{"visibility":"public"}' 2>/dev/null || \
           curl -X PATCH \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/$PACKAGE_NAME/visibility" \
-            -d '{"visibility":"public"}' || echo "Note: Image visibility may need to be set manually in GitHub Packages settings"
+            -d '{"visibility":"public"}' 2>/dev/null || \
+          echo "Note: Set image visibility manually at https://github.com/${{ github.repository_owner }}?tab=packages"
 
   build-frontend:
     name: Build Frontend Image
@@ -139,13 +148,22 @@ jobs:
       - name: Make frontend image public
         if: github.event_name != 'pull_request'
         run: |
-          PACKAGE_NAME=$(echo "${{ env.FRONTEND_IMAGE_NAME }}" | tr '/' '-')
+          # GitHub Container Registry usa formato: owner-repo-package
+          PACKAGE_NAME="relatorios-frontend"
+          # Tentar como usuário primeiro, depois como org
+          curl -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/user/packages/container/$PACKAGE_NAME/visibility" \
+            -d '{"visibility":"public"}' 2>/dev/null || \
           curl -X PATCH \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/orgs/${{ github.repository_owner }}/packages/container/$PACKAGE_NAME/visibility" \
-            -d '{"visibility":"public"}' || echo "Note: Image visibility may need to be set manually in GitHub Packages settings"
+            -d '{"visibility":"public"}' 2>/dev/null || \
+          echo "Note: Set image visibility manually at https://github.com/${{ github.repository_owner }}?tab=packages"
 
   summary:
     name: Build Summary
