@@ -342,6 +342,7 @@ router.get('/:year/:month/pdf', authenticateToken, anyAuthenticated, async (req:
       limit: usage.limit,
       rollover: usage.rollover,
       remaining: usage.remaining,
+      frontendUrl: process.env.FRONTEND_URL || 'https://relatorio.pixfilmes.com',
     };
 
     const pdfBuffer = await pdfService.generateReportPDF(pdfData);

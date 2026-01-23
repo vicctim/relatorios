@@ -68,7 +68,7 @@ class PDFService {
     return format(date, 'MMMM', { locale: ptBR });
   }
 
-  async generateReportPDF(data: ReportData): Promise<Buffer> {
+  async generateReportPDF(data: ReportData & { frontendUrl?: string }): Promise<Buffer> {
     const settings = await this.getSettings();
 
     const companyName = settings['company_name'] || 'Pix Filmes';
@@ -169,7 +169,7 @@ class PDFService {
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 15px;
       margin-bottom: 30px;
     }
@@ -284,32 +284,26 @@ class PDFService {
 
   <div class="stats-grid">
     <div class="stat-card primary">
-      <div class="stat-label">Utilizado</div>
-      <div class="stat-value">${this.formatDuration(data.totalUsed)}</div>
+      <div class="stat-label">Total Utilizado</div>
+      <div class="stat-value">${this.formatDurationSeconds(data.totalUsed)}</div>
+      ${data.rollover && data.rollover > 0 ? `<div style="font-size: 9px; margin-top: 3px; opacity: 0.8;">(-${this.formatDurationSeconds(data.rollover)} rollover)</div>` : ''}
     </div>
     <div class="stat-card">
-      <div class="stat-label">Limite Base</div>
-      <div class="stat-value">${this.formatDuration(data.limit - data.rollover)}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Rollover</div>
-      <div class="stat-value">+${this.formatDuration(data.rollover)}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Disponível</div>
-      <div class="stat-value">${this.formatDuration(data.remaining)}</div>
+      <div class="stat-label">Total de Vídeos</div>
+      <div class="stat-value">${data.professionals.reduce((sum, p) => sum + p.videos.length, 0)}</div>
     </div>
   </div>
 
   <table class="videos-table">
     <thead>
       <tr>
-        <th style="width: 25%">Título</th>
-        <th style="width: 12%">Resolução</th>
-        <th style="width: 12%">Profissional</th>
-        <th style="width: 12%">Solicitado</th>
-        <th style="width: 12%">Concluído</th>
-        <th style="width: 27%; text-align: right">Duração</th>
+        <th style="width: 20%">Título</th>
+        <th style="width: 10%">Resolução</th>
+        <th style="width: 10%">Profissional</th>
+        <th style="width: 10%">Solicitado</th>
+        <th style="width: 10%">Concluído</th>
+        <th style="width: 15%; text-align: right">Duração</th>
+        <th style="width: 25%; text-align: center">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -320,6 +314,8 @@ class PDFService {
         const versionsList = video.versions.length > 0 
           ? video.versions.map(v => v.resolutionLabel).join(', ')
           : '';
+        const frontendUrl = data.frontendUrl || 'https://relatorio.pixfilmes.com';
+        const videoUrl = `${frontendUrl}/videos/${video.id}`;
         return `
             <tr>
               <td>
@@ -332,8 +328,11 @@ class PDFService {
               <td>${format(new Date(video.requestDate), 'dd/MM/yyyy')}</td>
               <td>${format(new Date(video.completionDate), 'dd/MM/yyyy')}</td>
               <td class="duration-cell">
-                ${this.formatDuration(totalDuration)}
-                ${video.versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDuration(versionsTotal)} de ${video.versions.length} versã${video.versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
+                ${this.formatDurationSeconds(totalDuration)}
+                ${video.versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDurationSeconds(versionsTotal)} de ${video.versions.length} versã${video.versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
+              </td>
+              <td style="text-align: center;">
+                <a href="${videoUrl}" style="color: #4CAF50; text-decoration: none; font-size: 10px; font-weight: 600;">▶ Reproduzir</a>
               </td>
             </tr>
           `;
@@ -501,7 +500,7 @@ class PDFService {
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 15px;
       margin-bottom: 30px;
     }
@@ -630,12 +629,13 @@ class PDFService {
   <table class="videos-table">
     <thead>
       <tr>
-        <th style="width: 25%">Título</th>
-        <th style="width: 12%">Resolução</th>
-        <th style="width: 12%">Profissional</th>
-        <th style="width: 12%">Solicitado</th>
-        <th style="width: 12%">Concluído</th>
-        <th style="width: 27%; text-align: right">Duração</th>
+        <th style="width: 20%">Título</th>
+        <th style="width: 10%">Resolução</th>
+        <th style="width: 10%">Profissional</th>
+        <th style="width: 10%">Solicitado</th>
+        <th style="width: 10%">Concluído</th>
+        <th style="width: 15%; text-align: right">Duração</th>
+        <th style="width: 25%; text-align: center">Ações</th>
       </tr>
     </thead>
     <tbody>
