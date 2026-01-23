@@ -63,9 +63,10 @@ RUN chmod +x /app/docker-entrypoint.sh
 RUN mkdir -p uploads/videos uploads/logos uploads/temp uploads/thumbnails uploads/reports
 
 # Usuário não-root para segurança
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
-USER appuser
+# Verificar se o usuário já existe (pode existir na imagem base)
+RUN (id -u 1000 > /dev/null 2>&1 && echo "User 1000 already exists") || useradd -m -u 1000 appuser || true
+RUN chown -R 1000:1000 /app
+USER 1000
 
 # Expor porta
 EXPOSE 3001
