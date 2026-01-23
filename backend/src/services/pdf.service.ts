@@ -297,13 +297,13 @@ class PDFService {
   <table class="videos-table">
     <thead>
       <tr>
-        <th style="width: 20%">Título</th>
+        <th style="width: 22%">Título</th>
         <th style="width: 10%">Resolução</th>
         <th style="width: 10%">Profissional</th>
         <th style="width: 10%">Solicitado</th>
         <th style="width: 10%">Concluído</th>
-        <th style="width: 15%; text-align: right">Duração</th>
-        <th style="width: 25%; text-align: center">Ações</th>
+        <th style="width: 18%; text-align: right">Duração</th>
+        <th style="width: 10%; text-align: center">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -331,8 +331,13 @@ class PDFService {
                 ${this.formatDurationSeconds(totalDuration)}
                 ${video.versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDurationSeconds(versionsTotal)} de ${video.versions.length} versã${video.versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
               </td>
-              <td style="text-align: center;">
-                <a href="${videoUrl}" style="color: #4CAF50; text-decoration: none; font-size: 10px; font-weight: 600;">▶ Reproduzir</a>
+              <td style="text-align: center; padding: 8px 4px;">
+                <a href="${videoUrl}" style="display: inline-flex; align-items: center; gap: 4px; color: #4CAF50; text-decoration: none; font-size: 9px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f0f9f0'" onmouseout="this.style.background='transparent'">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink: 0;">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <span>Ver</span>
+                </a>
               </td>
             </tr>
           `;
@@ -629,13 +634,13 @@ class PDFService {
   <table class="videos-table">
     <thead>
       <tr>
-        <th style="width: 20%">Título</th>
+        <th style="width: 22%">Título</th>
         <th style="width: 10%">Resolução</th>
         <th style="width: 10%">Profissional</th>
         <th style="width: 10%">Solicitado</th>
         <th style="width: 10%">Concluído</th>
-        <th style="width: 15%; text-align: right">Duração</th>
-        <th style="width: 25%; text-align: center">Ações</th>
+        <th style="width: 18%; text-align: right">Duração</th>
+        <th style="width: 10%; text-align: center">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -664,8 +669,13 @@ class PDFService {
                 ${this.formatDurationSeconds(totalDuration)}
                 ${versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDurationSeconds(versionsTotal)} de ${versions.length} versã${versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
               </td>
-              <td style="text-align: center;">
-                <a href="${videoUrl}" style="color: #4CAF50; text-decoration: none; font-size: 10px; font-weight: 600;">▶ Reproduzir</a>
+              <td style="text-align: center; padding: 8px 4px;">
+                <a href="${videoUrl}" style="display: inline-flex; align-items: center; gap: 4px; color: #4CAF50; text-decoration: none; font-size: 9px; padding: 2px 6px; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='#f0f9f0'" onmouseout="this.style.background='transparent'">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink: 0;">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <span>Ver</span>
+                </a>
               </td>
             </tr>
           `;

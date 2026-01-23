@@ -14,6 +14,8 @@ import 'react-datepicker/dist/react-datepicker.css';
 
 export default function Videos() {
   const { user } = useAuth();
+  const { id: videoIdFromUrl } = useParams<{ id?: string }>();
+  const navigate = useNavigate();
   const [videos, setVideos] = useState<Video[]>([]);
   const [professionals, setProfessionals] = useState<Professional[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
@@ -87,6 +89,31 @@ export default function Videos() {
   useEffect(() => {
     loadVideos();
   }, [page, selectedProfessional, selectedMonth, selectedYear]);
+
+  // Abrir modal automaticamente quando acessado via URL /videos/:id
+  useEffect(() => {
+    if (videoIdFromUrl) {
+      const videoId = parseInt(videoIdFromUrl);
+      if (!isNaN(videoId)) {
+        handleVideoPreview(videoId);
+      }
+    }
+  }, [videoIdFromUrl]);
+
+  const handleVideoPreview = async (videoId: number) => {
+    try {
+      setIsLoadingVideo(true);
+      const response = await videosApi.get(videoId);
+      setPreviewVideo(response.data.video || response.data);
+    } catch (error) {
+      console.error('Error loading video:', error);
+      toast.error('Erro ao carregar vídeo');
+      // Se der erro, redirecionar para /videos
+      navigate('/videos', { replace: true });
+    } finally {
+      setIsLoadingVideo(false);
+    }
+  };
 
   const loadProfessionals = async () => {
     try {
@@ -462,17 +489,8 @@ export default function Videos() {
 
                       {/* Preview thumbnail */}
                       <button
-                        onClick={async () => {
-                          try {
-                            setIsLoadingVideo(true);
-                            const response = await videosApi.get(video.id);
-                            setPreviewVideo(response.data.video || response.data);
-                          } catch (error) {
-                            console.error('Error loading video:', error);
-                            toast.error('Erro ao carregar vídeo');
-                          } finally {
-                            setIsLoadingVideo(false);
-                          }
+                        onClick={() => {
+                          navigate(`/videos/${video.id}`);
                         }}
                         className="w-32 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0 hover:opacity-80 transition-opacity overflow-hidden relative group"
                       >
@@ -756,6 +774,10 @@ export default function Videos() {
         onClose={() => {
           setPreviewVideo(null);
           setIsLoadingVideo(false);
+          // Limpar URL quando fechar o modal
+          if (videoIdFromUrl) {
+            navigate('/videos', { replace: true });
+          }
         }}
         title=""
         size="xl"
