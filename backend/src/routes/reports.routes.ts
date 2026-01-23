@@ -230,7 +230,13 @@ router.get('/export/pdf', authenticateToken, anyAuthenticated, async (req: Reque
     res.send(pdfBuffer);
   } catch (error) {
     console.error('Generate date range PDF error:', error);
-    res.status(500).json({ error: 'Erro ao gerar PDF' });
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    console.error('Error details:', { errorMessage, errorStack });
+    res.status(500).json({ 
+      error: 'Erro ao gerar PDF',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 
