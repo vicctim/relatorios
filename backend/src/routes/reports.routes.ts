@@ -125,7 +125,7 @@ router.get('/export/pdf', authenticateToken, anyAuthenticated, async (req: Reque
     }
 
     // Calcular limite com rollover manual se fornecido
-    const baseLimit = await Setting.getValue<number>('monthly_limit_seconds', 1100);
+    const baseLimit = (await Setting.getValue<number>('monthly_limit_seconds', 1100)) ?? 1100;
     const manualRolloverValue = manualRollover ? parseInt(manualRollover as string) : undefined;
     const rollover = manualRolloverValue !== undefined && !isNaN(manualRolloverValue) ? manualRolloverValue : 0;
     const limit = baseLimit + rollover;
