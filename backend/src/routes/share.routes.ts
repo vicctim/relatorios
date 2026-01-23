@@ -54,8 +54,10 @@ async function generateUniqueSlug(baseSlug: string, videoIds: number[]): Promise
     while (true) {
         const existing = await ShareLink.findOne({
             where: {
-                customSlug: slug,
-                active: true
+                // IMPORTANTE:
+                // O índice UNIQUE do banco vale para registros ativos e inativos.
+                // Então precisamos checar qualquer ocorrência para evitar ER_DUP_ENTRY.
+                customSlug: slug
             }
         });
 
@@ -132,16 +134,39 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
             }
         }
 
-        const shareLink = await ShareLink.create({
-            token,
-            customSlug: finalSlug,
-            name,
-            message,
-            expiresAt: expiresAt ? new Date(expiresAt) : null,
-            maxDownloads: maxDownloads ? Number(maxDownloads) : null,
-            active: true,
-            createdBy: userId,
-        });
+        // Criar shareLink com retry leve para evitar race condition de UNIQUE
+        let shareLink: ShareLink | null = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                shareLink = await ShareLink.create({
+                    token,
+                    customSlug: finalSlug,
+                    name,
+                    message,
+                    expiresAt: expiresAt ? new Date(expiresAt) : null,
+                    maxDownloads: maxDownloads ? Number(maxDownloads) : null,
+                    active: true,
+                    createdBy: userId,
+                });
+                break;
+            } catch (err: any) {
+                const isUniqueSlug =
+                    err?.name === 'SequelizeUniqueConstraintError' &&
+                    (err?.fields?.custom_slug ||
+                        (Array.isArray(err?.errors) && err.errors.some((e: any) => e?.path === 'custom_slug')));
+
+                if (isUniqueSlug && finalSlug) {
+                    // Gera próximo slug disponível e tenta novamente
+                    finalSlug = await generateUniqueSlug(finalSlug, allVideoIds);
+                    continue;
+                }
+                throw err;
+            }
+        }
+
+        if (!shareLink) {
+            throw new Error('Falha ao criar link de compartilhamento');
+        }
 
         // Add videos (incluindo versões automaticamente)
         await shareLink.addVideos(allVideoIds);
