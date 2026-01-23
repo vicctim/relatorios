@@ -156,18 +156,35 @@ export function formatPhoneNumber(phone: string): string {
  * Gera URL de compartilhamento usando domínio configurado ou fallback para window.location.origin
  */
 export function getShareUrl(slug: string): string {
-  // Usar variável de ambiente se disponível, senão usar window.location.origin
-  // process.env.SHARE_URL é injetado pelo webpack.DefinePlugin
+  // process.env.SHARE_URL é injetado pelo webpack.DefinePlugin durante o build
   // Em runtime, process.env pode não estar disponível, então verificamos também via window
   let shareDomain = '';
   
-  // Tentar obter do process.env (injetado pelo webpack)
-  if (typeof process !== 'undefined' && process.env && process.env.SHARE_URL) {
-    shareDomain = String(process.env.SHARE_URL).trim();
+  // Tentar obter do process.env (injetado pelo webpack.DefinePlugin)
+  // O webpack substitui process.env.SHARE_URL pelo valor real durante o build
+  if (typeof process !== 'undefined' && process.env) {
+    // @ts-ignore - process.env é injetado pelo webpack
+    shareDomain = String(process.env.SHARE_URL || '').trim();
   }
   
   // Se não encontrou, usar window.location.origin como fallback
-  const baseUrl = shareDomain || (typeof window !== 'undefined' ? window.location.origin : 'https://relatorio.pixfilmes.com');
+  // Mas se window.location.origin for relatorio.pixfilmes.com, usar arquivos.pixfilmes.com
+  let baseUrl = shareDomain;
+  
+  if (!baseUrl && typeof window !== 'undefined') {
+    const currentOrigin = window.location.origin;
+    // Se estiver em relatorio.pixfilmes.com, usar arquivos.pixfilmes.com
+    if (currentOrigin.includes('relatorio.pixfilmes.com')) {
+      baseUrl = currentOrigin.replace('relatorio.pixfilmes.com', 'arquivos.pixfilmes.com');
+    } else {
+      baseUrl = currentOrigin;
+    }
+  }
+  
+  // Fallback final
+  if (!baseUrl) {
+    baseUrl = 'https://arquivos.pixfilmes.com';
+  }
   
   // Garantir que não tenha barra dupla
   const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
@@ -175,10 +192,14 @@ export function getShareUrl(slug: string): string {
   
   const finalUrl = `${cleanBaseUrl}/s/${cleanSlug}`;
   
-  // Debug em desenvolvimento
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[getShareUrl] shareDomain:', shareDomain, 'baseUrl:', baseUrl, 'finalUrl:', finalUrl);
-  }
+  // Debug sempre (para ajudar a identificar o problema)
+  console.log('[getShareUrl]', {
+    shareDomain,
+    baseUrl,
+    finalUrl,
+    processEnv: typeof process !== 'undefined' ? process.env : 'undefined',
+    windowOrigin: typeof window !== 'undefined' ? window.location.origin : 'undefined'
+  });
   
   return finalUrl;
 }
