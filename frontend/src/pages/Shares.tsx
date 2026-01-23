@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link2, Copy, ExternalLink, Calendar, Download, Check, Trash2, Eye, Play, Clock, Film, User, Share2, Tv, Smartphone } from 'lucide-react';
+import { Link2, Copy, ExternalLink, Calendar, Download, Check, Trash2, Eye, Play, Clock, Film, User, Tv, Smartphone } from 'lucide-react';
 import { sharesApi, videosApi } from '../services/api';
 import { LoadingSpinner, Modal } from '../components/ui';
-import { formatDate, formatDateTime, formatDuration } from '../utils/formatters';
+import { formatDate, formatDuration } from '../utils/formatters';
 import { Video } from '../types';
 import toast from 'react-hot-toast';
 
@@ -463,7 +463,7 @@ export default function Shares() {
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {previewVideo.versions.map((version, index) => (
+                    {previewVideo.versions.map((version) => (
                       <span
                         key={version.id}
                         className="px-3 py-1 bg-white dark:bg-gray-800 rounded-full text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm"

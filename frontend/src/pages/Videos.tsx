@@ -1016,7 +1016,7 @@ export default function Videos() {
               <label className="label">Data de Solicitação</label>
               <DatePicker
                 selected={editForm.requestDate}
-                onChange={(date) => setEditForm({ ...editForm, requestDate: date || new Date() })}
+                onChange={(date: Date | null) => setEditForm({ ...editForm, requestDate: date || new Date() })}
                 dateFormat="dd/MM/yyyy"
                 locale={ptBR}
                 className="input w-full"
@@ -1026,7 +1026,7 @@ export default function Videos() {
               <label className="label">Data de Conclusão</label>
               <DatePicker
                 selected={editForm.completionDate}
-                onChange={(date) => setEditForm({ ...editForm, completionDate: date || new Date() })}
+                onChange={(date: Date | null) => setEditForm({ ...editForm, completionDate: date || new Date() })}
                 dateFormat="dd/MM/yyyy"
                 locale={ptBR}
                 className="input w-full"

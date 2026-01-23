@@ -22,7 +22,7 @@ export default function Reports() {
   const [exportStartDate, setExportStartDate] = useState<Date | null>(null);
   const [exportEndDate, setExportEndDate] = useState<Date | null>(null);
   const [exportDateField, setExportDateField] = useState<'requestDate' | 'completionDate'>('requestDate');
-  const [exportPreview, setExportPreview] = useState<{ totalVideos: number; totalDuration: number } | null>(null);
+  const [exportPreview, setExportPreview] = useState<{ totalVideos: number; totalDuration: number; parentVideosCount?: number; versionsCount?: number } | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   // History state
@@ -443,7 +443,7 @@ export default function Reports() {
                 <div className="relative">
                   <DatePicker
                     selected={exportStartDate}
-                    onChange={(date) => setExportStartDate(date)}
+                    onChange={(date: Date | null) => setExportStartDate(date)}
                     selectsStart
                     startDate={exportStartDate}
                     endDate={exportEndDate}
@@ -463,7 +463,7 @@ export default function Reports() {
                 <div className="relative">
                   <DatePicker
                     selected={exportEndDate}
-                    onChange={(date) => setExportEndDate(date)}
+                    onChange={(date: Date | null) => setExportEndDate(date)}
                     selectsEnd
                     startDate={exportStartDate}
                     endDate={exportEndDate}
