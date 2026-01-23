@@ -30,6 +30,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copiar arquivos buildados
 COPY --from=builder /app/dist /usr/share/nginx/html
 
+# Copiar favicon se existir na pasta public
+COPY --from=builder /app/public/favicon.svg /usr/share/nginx/html/favicon.svg 2>/dev/null || true
+
 # Expor porta
 EXPOSE 80
 
