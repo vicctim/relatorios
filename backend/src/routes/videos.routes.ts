@@ -11,6 +11,53 @@ import notificationService from '../services/notification.service';
 import reportService from '../services/report.service';
 import archiver from 'archiver';
 
+/**
+ * Valida magic bytes do arquivo para garantir que é realmente um vídeo
+ */
+const validateVideoMagicBytes = (filePath: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const stream = fs.createReadStream(filePath, { start: 0, end: 12 });
+    const chunks: Buffer[] = [];
+
+    stream.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+
+    stream.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      
+      // MP4/MOV: deve começar com ftyp box (bytes 4-7 = 'ftyp')
+      if (buffer.length >= 8) {
+        const ftyp = buffer.slice(4, 8).toString('ascii');
+        if (ftyp === 'ftyp') {
+          // Verificar brand (MP4 ou QuickTime)
+          const brand = buffer.slice(8, 12).toString('ascii');
+          if (brand.includes('mp4') || brand.includes('qt  ') || brand.includes('isom')) {
+            resolve(true);
+            return;
+          }
+        }
+      }
+
+      // AVI: deve começar com RIFF...AVI
+      if (buffer.length >= 12) {
+        const riff = buffer.slice(0, 4).toString('ascii');
+        const avi = buffer.slice(8, 12).toString('ascii');
+        if (riff === 'RIFF' && avi === 'AVI ') {
+          resolve(true);
+          return;
+        }
+      }
+
+      resolve(false);
+    });
+
+    stream.on('error', () => {
+      resolve(false);
+    });
+  });
+};
+
 const router = Router();
 
 // GET /api/videos - List videos with filters
@@ -153,8 +200,35 @@ router.post(
         return;
       }
 
-      const { requestDate, completionDate, professionalId, isTv, tvTitle, customDurationSeconds } = req.body;
+      // F-006: Validar magic bytes do arquivo
+      const isValidVideo = await validateVideoMagicBytes(req.file.path);
+      if (!isValidVideo) {
+        fs.unlinkSync(req.file.path);
+        res.status(400).json({ error: 'Arquivo não é um vídeo válido. O conteúdo do arquivo não corresponde ao formato esperado.' });
+        return;
+      }
+
+      const { requestDate, completionDate, professionalId, isTv, tvTitle, customDurationSeconds, includeInReport } = req.body;
       let { title } = req.body;
+
+      // F-008: Validar que completionDate >= requestDate
+      const requestDateObj = new Date(requestDate);
+      const completionDateObj = new Date(completionDate);
+      if (completionDateObj < requestDateObj) {
+        fs.unlinkSync(req.file.path);
+        res.status(400).json({ error: 'Data de conclusão deve ser posterior ou igual à data de solicitação' });
+        return;
+      }
+
+      // F-009: Validar customDurationSeconds >= 0
+      if (customDurationSeconds !== undefined && customDurationSeconds !== null && customDurationSeconds !== '') {
+        const customDuration = Number(customDurationSeconds);
+        if (isNaN(customDuration) || customDuration < 0) {
+          fs.unlinkSync(req.file.path);
+          res.status(400).json({ error: 'Duração customizada deve ser um número maior ou igual a zero' });
+          return;
+        }
+      }
 
       // Validate TV title requirement
       if (isTv === 'true' || isTv === true) {
@@ -179,6 +253,11 @@ router.post(
       const thumbnailPath = await ffmpegService.extractThumbnail(finalPath, thumbnailFilename);
 
       // Create video record
+      // F-011: includeInReport default true se não fornecido
+      const shouldIncludeInReport = includeInReport !== undefined 
+        ? (includeInReport === 'true' || includeInReport === true)
+        : true;
+
       const video = await Video.create({
         title,
         originalFilename: req.file.originalname,
@@ -197,6 +276,7 @@ router.post(
         completionDate: new Date(completionDate),
         professionalId: Number(professionalId),
         uploadedBy: req.user!.id,
+        includeInReport: shouldIncludeInReport,
       });
 
       // Reload with associations
@@ -243,9 +323,20 @@ router.post(
         message: wasCompressed ? 'Vídeo comprimido e salvo com sucesso' : 'Vídeo salvo com sucesso',
       });
     } catch (error) {
-      // Clean up uploaded file on error
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      // F-015: Cleanup melhorado - garantir remoção de arquivos temporários em caso de erro
+      try {
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        // Se o processamento começou mas falhou, tentar limpar arquivo final também
+        if (req.file) {
+          const finalPath = path.join(directories.videos, path.basename(req.file.path));
+          if (fs.existsSync(finalPath)) {
+            fs.unlinkSync(finalPath);
+          }
+        }
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
       }
       console.error('Upload video error:', error);
       res.status(500).json({ error: 'Erro ao processar vídeo' });
@@ -263,6 +354,14 @@ router.post(
     try {
       if (!req.file) {
         res.status(400).json({ error: 'Nenhum arquivo enviado' });
+        return;
+      }
+
+      // F-006: Validar magic bytes do arquivo
+      const isValidVideo = await validateVideoMagicBytes(req.file.path);
+      if (!isValidVideo) {
+        fs.unlinkSync(req.file.path);
+        res.status(400).json({ error: 'Arquivo não é um vídeo válido. O conteúdo do arquivo não corresponde ao formato esperado.' });
         return;
       }
 
@@ -292,7 +391,18 @@ router.post(
       // Get custom duration from request body if provided
       const { customDurationSeconds } = req.body;
 
+      // F-009: Validar customDurationSeconds >= 0
+      if (customDurationSeconds !== undefined && customDurationSeconds !== null && customDurationSeconds !== '') {
+        const customDuration = Number(customDurationSeconds);
+        if (isNaN(customDuration) || customDuration < 0) {
+          fs.unlinkSync(req.file.path);
+          res.status(400).json({ error: 'Duração customizada deve ser um número maior ou igual a zero' });
+          return;
+        }
+      }
+
       // Create version record
+      // F-011: Versões herdam includeInReport do vídeo pai por padrão
       const version = await Video.create({
         parentId: parentVideo.id,
         title: parentVideo.title, // Inherit title from parent
@@ -312,6 +422,7 @@ router.post(
         completionDate: parentVideo.completionDate,
         professionalId: parentVideo.professionalId,
         uploadedBy: req.user!.id,
+        includeInReport: parentVideo.includeInReport, // F-011: Herdar do pai
       });
 
       // Check monthly limit usage after version upload (in background)
@@ -351,8 +462,20 @@ router.post(
         message: 'Versão adicional salva com sucesso',
       });
     } catch (error) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      // F-015: Cleanup melhorado
+      try {
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        // Se o processamento começou mas falhou, tentar limpar arquivo final também
+        if (req.file) {
+          const finalPath = path.join(directories.videos, path.basename(req.file.path));
+          if (fs.existsSync(finalPath)) {
+            fs.unlinkSync(finalPath);
+          }
+        }
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
       }
       console.error('Upload version error:', error);
       res.status(500).json({ error: 'Erro ao processar versão' });
@@ -387,7 +510,7 @@ router.put(
         return;
       }
 
-      const { title, requestDate, completionDate, professionalId, isTv, tvTitle, customDurationSeconds } = req.body;
+      const { title, requestDate, completionDate, professionalId, isTv, tvTitle, customDurationSeconds, includeInReport } = req.body;
 
       // Update fields
       if (title !== undefined) video.title = title;
@@ -398,6 +521,23 @@ router.put(
       if (tvTitle !== undefined) video.tvTitle = tvTitle;
       if (customDurationSeconds !== undefined) {
         video.customDurationSeconds = customDurationSeconds ? Number(customDurationSeconds) : null;
+      }
+      if (includeInReport !== undefined) {
+        video.includeInReport = includeInReport === 'true' || includeInReport === true;
+      }
+
+      // F-008: Validar que completionDate >= requestDate
+      if (video.completionDate < video.requestDate) {
+        res.status(400).json({ error: 'Data de conclusão deve ser posterior ou igual à data de solicitação' });
+        return;
+      }
+
+      // F-009: Validar customDurationSeconds >= 0
+      if (video.customDurationSeconds !== null && video.customDurationSeconds !== undefined) {
+        if (video.customDurationSeconds < 0) {
+          res.status(400).json({ error: 'Duração customizada deve ser um número maior ou igual a zero' });
+          return;
+        }
       }
 
       // Validate TV title requirement

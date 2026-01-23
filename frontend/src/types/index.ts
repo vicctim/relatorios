@@ -38,6 +38,7 @@ export interface Video {
   completionDate: string;
   professionalId: number;
   uploadedBy: number;
+  includeInReport: boolean; // F-011
   createdAt: string;
   updatedAt: string;
   professional?: Professional;

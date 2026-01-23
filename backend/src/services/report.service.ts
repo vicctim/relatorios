@@ -78,9 +78,11 @@ class ReportService {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
+    // F-011: Filtrar apenas vídeos que devem ser incluídos no relatório
     const videos = await Video.findAll({
       where: {
         parentId: null, // Only parent videos
+        includeInReport: true, // Only videos marked to include in report
         requestDate: {
           [Op.between]: [startDate, endDate],
         },
@@ -89,8 +91,19 @@ class ReportService {
         {
           model: Video,
           as: 'versions',
+          where: {
+            includeInReport: true, // Versions também devem estar marcadas
+          },
+          required: false, // LEFT JOIN para incluir pais mesmo sem versões
         },
       ],
+    });
+
+    // Filtrar versões manualmente após a query (para garantir que apenas versões com includeInReport=true sejam contabilizadas)
+    videos.forEach(video => {
+      if (video.versions) {
+        video.versions = video.versions.filter(v => v.includeInReport === true);
+      }
     });
 
     let totalSeconds = 0;
@@ -122,10 +135,11 @@ class ReportService {
     const startDate = new Date(year, month - 1, 1);
     const endDate = new Date(year, month, 0);
 
-    // Get all parent videos for the month
+    // F-011: Get all parent videos for the month that are included in reports
     const videos = await Video.findAll({
       where: {
         parentId: null,
+        includeInReport: true, // Only videos marked to include in report
         requestDate: {
           [Op.between]: [startDate, endDate],
         },
@@ -135,6 +149,10 @@ class ReportService {
         {
           model: Video,
           as: 'versions',
+          where: {
+            includeInReport: true, // Versions também devem estar marcadas
+          },
+          required: false, // LEFT JOIN
         },
       ],
       order: [
@@ -234,10 +252,11 @@ class ReportService {
     totalVideos: number;
     totalDuration: number;
   }> {
-    // Get all parent videos for the date range
+    // F-011: Get all parent videos for the date range that are included in reports
     const videos = await Video.findAll({
       where: {
         parentId: null,
+        includeInReport: true, // Only videos marked to include in report
         [dateField]: {
           [Op.between]: [startDate, endDate],
         },
@@ -247,6 +266,10 @@ class ReportService {
         {
           model: Video,
           as: 'versions',
+          where: {
+            includeInReport: true, // Versions também devem estar marcadas
+          },
+          required: false, // LEFT JOIN
         },
       ],
       order: [
@@ -346,11 +369,12 @@ class ReportService {
       include: [{ model: Video, as: 'versions' }],
     });
 
+    // F-010: Usar getCalculatedDuration() para considerar customDurationSeconds
     let totalDuration = 0;
     for (const video of allVideos) {
-      totalDuration += video.durationSeconds;
+      totalDuration += video.getCalculatedDuration();
       if (video.versions) {
-        totalDuration += video.versions.reduce((sum, v) => sum + v.durationSeconds * 0.5, 0);
+        totalDuration += video.versions.reduce((sum, v) => sum + v.getCalculatedDuration(), 0);
       }
     }
 
@@ -360,16 +384,25 @@ class ReportService {
     // Set end of day for endDate
     endDate.setHours(23, 59, 59, 999);
 
+    // F-011: Filtrar apenas vídeos incluídos no relatório
     const recentVideos = await Video.findAll({
       where: {
         parentId: null,
+        includeInReport: true,
         requestDate: {
           [Op.between]: [startDate, endDate],
         },
       },
       include: [
         { model: Professional, as: 'professional' },
-        { model: Video, as: 'versions' },
+        { 
+          model: Video, 
+          as: 'versions',
+          where: {
+            includeInReport: true,
+          },
+          required: false,
+        },
       ],
       order: [['requestDate', 'DESC'], ['createdAt', 'DESC']],
     });

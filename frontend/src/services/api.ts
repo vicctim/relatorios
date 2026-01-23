@@ -111,6 +111,7 @@ export const videosApi = {
     professionalId: number;
     isTv?: boolean;
     tvTitle?: string;
+    includeInReport?: boolean;
   }, onProgress?: (progress: number) => void) => {
     const formData = new FormData();
     formData.append('video', file);
@@ -152,6 +153,7 @@ export const videosApi = {
     professionalId: number;
     isTv: boolean;
     tvTitle: string | null;
+    includeInReport?: boolean;
   }>) => api.put(`/videos/${id}`, data),
   delete: (id: number) => api.delete(`/videos/${id}`),
   downloadZip: (videoIds: number[]) => api.post('/videos/download-zip', { videoIds }, { responseType: 'blob' }),

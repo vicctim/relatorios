@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
+import { Readable } from 'stream';
 
 // Ensure upload directories exist
 const uploadsDir = process.env.UPLOAD_PATH || './uploads';
@@ -28,8 +29,58 @@ const videoStorage = multer.diskStorage({
   },
 });
 
-const videoFileFilter = (
-  _req: Express.Request,
+/**
+ * Valida magic bytes do arquivo para garantir que é realmente um vídeo
+ * MP4: 00 00 00 ?? 66 74 79 70 (ftyp box)
+ * MOV/QuickTime: 00 00 00 ?? 66 74 79 70 (ftyp box)
+ * AVI: 52 49 46 46 ?? ?? ?? ?? 41 56 49 20 (RIFF...AVI )
+ */
+const validateVideoMagicBytes = (filePath: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    const stream = fs.createReadStream(filePath, { start: 0, end: 12 });
+    const chunks: Buffer[] = [];
+
+    stream.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+
+    stream.on('end', () => {
+      const buffer = Buffer.concat(chunks);
+      
+      // MP4/MOV: deve começar com ftyp box (bytes 4-7 = 'ftyp')
+      if (buffer.length >= 8) {
+        const ftyp = buffer.slice(4, 8).toString('ascii');
+        if (ftyp === 'ftyp') {
+          // Verificar brand (MP4 ou QuickTime)
+          const brand = buffer.slice(8, 12).toString('ascii');
+          if (brand.includes('mp4') || brand.includes('qt  ') || brand.includes('isom')) {
+            resolve(true);
+            return;
+          }
+        }
+      }
+
+      // AVI: deve começar com RIFF...AVI
+      if (buffer.length >= 12) {
+        const riff = buffer.slice(0, 4).toString('ascii');
+        const avi = buffer.slice(8, 12).toString('ascii');
+        if (riff === 'RIFF' && avi === 'AVI ') {
+          resolve(true);
+          return;
+        }
+      }
+
+      resolve(false);
+    });
+
+    stream.on('error', () => {
+      resolve(false);
+    });
+  });
+};
+
+const videoFileFilter = async (
+  req: Express.Request,
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) => {
@@ -38,11 +89,15 @@ const videoFileFilter = (
 
   const ext = path.extname(file.originalname).toLowerCase();
 
-  if (allowedMimes.includes(file.mimetype) || allowedExts.includes(ext)) {
-    cb(null, true);
-  } else {
+  // Validação básica de MIME e extensão
+  if (!allowedMimes.includes(file.mimetype) && !allowedExts.includes(ext)) {
     cb(new Error('Formato de arquivo não permitido. Use MP4 ou MOV.'));
+    return;
   }
+
+  // Validação de magic bytes será feita após upload (no handler da rota)
+  // pois precisamos do arquivo no disco para ler os primeiros bytes
+  cb(null, true);
 };
 
 // Logo upload configuration

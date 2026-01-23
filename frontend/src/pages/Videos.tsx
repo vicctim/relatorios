@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Play, Download, Trash2, Filter, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Plus, Pencil, Smartphone, Tv, Clock, Share2, Archive, CheckSquare, Square, Calendar, Copy, User, Check, Film } from 'lucide-react';
+import { Search, Play, Download, Trash2, Filter, ChevronLeft, ChevronRight, Plus, Pencil, Smartphone, Tv, Clock, Share2, CheckSquare, Square, Calendar, Copy, User, Check, Film } from 'lucide-react';
 import { videosApi, professionalsApi } from '../services/api';
 import { Video, Professional, Pagination } from '../types';
 import { formatDuration, formatDate, formatMonthYear } from '../utils/formatters';
@@ -29,7 +29,6 @@ export default function Videos() {
   const [deleteMultipleVideos, setDeleteMultipleVideos] = useState<Video[]>([]);
   const [isDeletingMultiple, setIsDeletingMultiple] = useState(false);
   const [page, setPage] = useState(1);
-  const [expandedVideos, setExpandedVideos] = useState<Set<number>>(new Set());
   
   // Multi-selection and share
   const [selectedVideos, setSelectedVideos] = useState<Set<number>>(new Set());
@@ -46,20 +45,19 @@ export default function Videos() {
     isTv: false,
     tvTitle: '',
     customDurationSeconds: '',
+    includeInReport: true, // F-011
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Toggle version expansion for a video
-  const toggleExpanded = (videoId: number) => {
-    setExpandedVideos(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(videoId)) {
-        newSet.delete(videoId);
-      } else {
-        newSet.add(videoId);
-      }
-      return newSet;
-    });
+  // Helper function to get resolution icon
+  const getResolutionIcon = (resolutionLabel: string) => {
+    if (resolutionLabel === '1080x1920') {
+      return <Smartphone className="w-4 h-4 text-gray-500 dark:text-gray-400" />;
+    } else if (resolutionLabel === '1920x1080' || resolutionLabel === '3840x2160') {
+      return <Tv className="w-4 h-4 text-gray-500 dark:text-gray-400" />;
+    } else {
+      return <Play className="w-4 h-4 text-gray-500 dark:text-gray-400" />;
+    }
   };
 
   // Get considered duration (customDuration if set, else 100% for parent, 50% for version)
@@ -242,6 +240,7 @@ export default function Videos() {
       isTv: video.isTv || false,
       tvTitle: video.tvTitle || '',
       customDurationSeconds: video.customDurationSeconds ? String(video.customDurationSeconds) : '',
+      includeInReport: video.includeInReport !== undefined ? video.includeInReport : true, // F-011
     });
   };
 
@@ -258,6 +257,7 @@ export default function Videos() {
         isTv: editForm.isTv,
         tvTitle: editForm.isTv ? editForm.tvTitle : null,
         customDurationSeconds: editForm.customDurationSeconds ? parseInt(editForm.customDurationSeconds) : null,
+        includeInReport: editForm.includeInReport, // F-011
       });
       toast.success('Vídeo atualizado com sucesso');
       setEditVideo(null);
@@ -441,7 +441,6 @@ export default function Videos() {
           <div className="grid gap-4">
             {videos.map((video) => {
               const hasVersions = video.versions && video.versions.length > 0;
-              const isExpanded = expandedVideos.has(video.id);
               const isSelected = selectedVideos.has(video.id);
 
               return (
@@ -506,27 +505,9 @@ export default function Videos() {
                           {video.title}
                         </h3>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1">
-                              <span>{video.resolutionLabel}</span>
-                              {video.resolutionLabel === '1080x1920' && (
-                                <Smartphone className="w-4 h-4 text-gray-400" />
-                              )}
-                              {(video.resolutionLabel === '1920x1080' || video.resolutionLabel === '3840x2160') && (
-                                <Tv className="w-4 h-4 text-gray-400" />
-                              )}
-                            </div>
-                            {video.versions?.map((v) => (
-                              <div key={v.id} className="flex items-center gap-1 text-xs text-gray-400">
-                                <span>{v.resolutionLabel}</span>
-                                {v.resolutionLabel === '1080x1920' && (
-                                  <Smartphone className="w-3 h-3" />
-                                )}
-                                {(v.resolutionLabel === '1920x1080' || v.resolutionLabel === '3840x2160') && (
-                                  <Tv className="w-3 h-3" />
-                                )}
-                              </div>
-                            ))}
+                          <div className="flex items-center gap-1">
+                            <span>{video.resolutionLabel}</span>
+                            {getResolutionIcon(video.resolutionLabel)}
                           </div>
                           <div className="flex flex-col">
                             <span className="text-sm text-gray-600 dark:text-gray-400">
@@ -555,24 +536,11 @@ export default function Videos() {
                         )}
                       </div>
 
-                      {/* Actions */}
+                      {/* Actions - Cores uniformes */}
                       <div className="flex gap-2">
-                        {hasVersions && (
-                          <button
-                            onClick={() => toggleExpanded(video.id)}
-                            className="btn-ghost p-2"
-                            title={isExpanded ? 'Recolher versões' : 'Expandir versões'}
-                          >
-                            {isExpanded ? (
-                              <ChevronUp className="w-5 h-5" />
-                            ) : (
-                              <ChevronDown className="w-5 h-5" />
-                            )}
-                          </button>
-                        )}
                         <button
                           onClick={() => handleShare([video.id])}
-                          className="btn-ghost p-2 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20"
+                          className="btn-ghost p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                           title="Compartilhar"
                         >
                           <Share2 className="w-5 h-5" />
@@ -590,14 +558,14 @@ export default function Videos() {
                               setIsLoadingVideo(false);
                             }
                           }}
-                          className="btn-ghost p-2"
+                          className="btn-ghost p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                           title="Preview"
                         >
                           <Play className="w-5 h-5" />
                         </button>
                         <a
                           href={videosApi.getDownloadUrl(video.id)}
-                          className="btn-ghost p-2"
+                          className="btn-ghost p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                           title="Download"
                         >
                           <Download className="w-5 h-5" />
@@ -605,7 +573,7 @@ export default function Videos() {
                         {user?.role === 'editor' && (
                           <Link
                             to={`/videos/${video.id}/versions`}
-                            className="btn-ghost p-2"
+                            className="btn-ghost p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                             title="Adicionar versão"
                           >
                             <Plus className="w-5 h-5" />
@@ -614,7 +582,7 @@ export default function Videos() {
                         {(user?.role === 'admin' || user?.role === 'editor') && (
                           <button
                             onClick={() => openEditModal(video)}
-                            className="btn-ghost p-2 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            className="btn-ghost p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                             title="Editar"
                           >
                             <Pencil className="w-5 h-5" />
@@ -623,7 +591,7 @@ export default function Videos() {
                         {(user?.role === 'admin' || user?.role === 'editor') && (
                           <button
                             onClick={() => setDeleteVideo(video)}
-                            className="btn-ghost p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            className="btn-ghost p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                             title="Excluir"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -633,8 +601,8 @@ export default function Videos() {
                     </div>
                   </div>
 
-                  {/* Versions (collapsed/expanded) */}
-                  {hasVersions && isExpanded && (
+                  {/* Versions - Sempre aninhadas abaixo do original */}
+                  {hasVersions && (
                     <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                       <div className="px-4 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Versões ({video.versions!.length})
@@ -685,8 +653,11 @@ export default function Videos() {
                               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Versão {index + 1}
                               </p>
-                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-                                <span>{version.resolutionLabel}</span>
+                              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 items-center">
+                                <div className="flex items-center gap-1">
+                                  <span>{version.resolutionLabel}</span>
+                                  {getResolutionIcon(version.resolutionLabel)}
+                                </div>
                                 <div className="flex flex-col">
                                   <span className="text-gray-500 dark:text-gray-400">
                                     Total: {formatDuration(version.durationSeconds)}
@@ -698,7 +669,7 @@ export default function Videos() {
                               </div>
                             </div>
 
-                            {/* Version actions */}
+                            {/* Version actions - Cores uniformes */}
                             <div className="flex gap-1">
                               <button
                                 onClick={async () => {
@@ -713,14 +684,14 @@ export default function Videos() {
                                   setIsLoadingVideo(false);
                                 }
                               }}
-                                className="btn-ghost p-1.5"
+                                className="btn-ghost p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                                 title="Preview"
                               >
                                 <Play className="w-4 h-4" />
                               </button>
                               <a
                                 href={videosApi.getDownloadUrl(version.id)}
-                                className="btn-ghost p-1.5"
+                                className="btn-ghost p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                                 title="Download"
                               >
                                 <Download className="w-4 h-4" />
@@ -728,7 +699,7 @@ export default function Videos() {
                               {(user?.role === 'admin' || user?.role === 'editor') && (
                                 <button
                                   onClick={() => openEditModal(version)}
-                                  className="btn-ghost p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                  className="btn-ghost p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                                   title="Editar versão"
                                 >
                                   <Pencil className="w-4 h-4" />
@@ -737,7 +708,7 @@ export default function Videos() {
                               {(user?.role === 'admin' || user?.role === 'editor') && (
                                 <button
                                   onClick={() => setDeleteVideo(version)}
-                                  className="btn-ghost p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                  className="btn-ghost p-1.5 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
                                   title="Excluir versão"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -748,17 +719,6 @@ export default function Videos() {
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* Collapsed versions indicator */}
-                  {hasVersions && !isExpanded && (
-                    <button
-                      onClick={() => toggleExpanded(video.id)}
-                      className="w-full px-4 py-2 text-sm text-primary-600 dark:text-primary-400 bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2"
-                    >
-                      <ChevronDown className="w-4 h-4" />
-                      Ver {video.versions!.length} versão(ões)
-                    </button>
                   )}
                 </div>
               );
@@ -868,8 +828,10 @@ export default function Videos() {
                   <div className="flex items-center gap-2 mb-2">
                     {previewVideo.resolutionLabel === '1080x1920' ? (
                       <Smartphone className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
-                    ) : (
+                    ) : previewVideo.resolutionLabel === '1920x1080' || previewVideo.resolutionLabel === '3840x2160' ? (
                       <Tv className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
+                    ) : (
+                      <Play className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
                     )}
                     <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase whitespace-nowrap">Resolução</span>
                   </div>
@@ -1087,6 +1049,25 @@ export default function Videos() {
               ))}
             </select>
           </div>
+
+          {/* F-011: Include in Report Checkbox */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="editIncludeInReport"
+              checked={editForm.includeInReport}
+              onChange={(e) => setEditForm({ ...editForm, includeInReport: e.target.checked })}
+              className="w-4 h-4 text-primary-600 rounded"
+            />
+            <label htmlFor="editIncludeInReport" className="text-sm text-gray-700 dark:text-gray-300">
+              Incluir este vídeo no relatório (contabilizar segundos)
+            </label>
+          </div>
+          {!editForm.includeInReport && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+              Este vídeo ficará arquivado para consulta, mas não contará no relatório.
+            </p>
+          )}
 
           <div className="flex items-center gap-2">
             <input

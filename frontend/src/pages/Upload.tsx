@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import { Upload as UploadIcon, X, Tv, ChevronDown, ChevronUp, Check, Clock, GitBranch, Plus } from 'lucide-react';
+import { Upload as UploadIcon, X, Tv, ChevronDown, ChevronUp, Check, Clock, GitBranch, Plus, CheckSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { videosApi, professionalsApi } from '../services/api';
 import { Professional } from '../types';
@@ -20,6 +20,7 @@ interface VideoFormData {
   isVersion: boolean;
   originalVideoIndex: number | null;
   customDurationSeconds: string;
+  includeInReport: boolean;
 }
 
 
@@ -84,6 +85,20 @@ export default function Upload() {
   };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
+    // F-014: Validar tamanho de todos os arquivos antes de processar
+    const maxSize = 500 * 1024 * 1024; // 500MB
+    const invalidFiles = acceptedFiles.filter(file => file.size > maxSize);
+    
+    if (invalidFiles.length > 0) {
+      invalidFiles.forEach(file => {
+        toast.error(`Arquivo "${file.name}" muito grande. Tamanho máximo: ${formatFileSize(maxSize)}`);
+      });
+      // Continuar apenas com arquivos válidos
+      acceptedFiles = acceptedFiles.filter(file => file.size <= maxSize);
+    }
+
+    if (acceptedFiles.length === 0) return;
+
     setVideos((prev) => {
     const newVideos: VideoFormData[] = acceptedFiles.map((file, index) => {
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
@@ -107,6 +122,7 @@ export default function Upload() {
           isVersion: isVersionAuto, // Detectar automaticamente por palavras-chave
           originalVideoIndex: originalIndex,
         customDurationSeconds: '',
+        includeInReport: true, // F-011: Default true
       };
     });
 
@@ -133,9 +149,17 @@ export default function Upload() {
     input.type = 'file';
     input.accept = 'video/mp4,video/quicktime';
     input.multiple = false;
+    // F-014: Validar tamanho máximo antes de adicionar
+    const maxSize = 500 * 1024 * 1024; // 500MB
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
+
+      // F-014: Validar tamanho do arquivo
+      if (file.size > maxSize) {
+        toast.error(`Arquivo muito grande. Tamanho máximo: ${formatFileSize(maxSize)}`);
+        return;
+      }
 
       const nameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
       const newVideo: VideoFormData = {
@@ -150,6 +174,7 @@ export default function Upload() {
         isVersion: true,
         originalVideoIndex: originalIndex,
         customDurationSeconds: '',
+        includeInReport: true, // F-011: Default true
       };
 
       setVideos((prev) => [...prev, newVideo]);
@@ -274,6 +299,7 @@ export default function Upload() {
             customDurationSeconds: video.customDurationSeconds
               ? parseInt(video.customDurationSeconds)
               : undefined,
+            includeInReport: video.includeInReport, // F-011
           }, (progress) => {
             setCurrentProgress(progress);
           });
@@ -589,6 +615,26 @@ export default function Upload() {
                               )}
                             </div>
                           )}
+
+                          {/* F-011: Include in Report Checkbox */}
+                          <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                            <input
+                              id={`includeInReport-${index}`}
+                              type="checkbox"
+                              className="w-4 h-4 rounded border-gray-300 text-primary-500"
+                              checked={video.includeInReport}
+                              onChange={(e) => updateVideo(index, 'includeInReport', e.target.checked)}
+                            />
+                            <label htmlFor={`includeInReport-${index}`} className="text-xs text-gray-700 dark:text-gray-300 flex items-center gap-1 cursor-pointer">
+                              <CheckSquare className="w-3 h-3" />
+                              Incluir este vídeo no relatório (contabilizar segundos)
+                            </label>
+                            {!video.includeInReport && (
+                              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 ml-6">
+                                Este vídeo ficará arquivado para consulta, mas não contará no relatório.
+                              </p>
+                            )}
+                          </div>
 
                           {/* TV Checkbox */}
                           <div className="flex items-center gap-2">
@@ -996,6 +1042,28 @@ export default function Upload() {
                               </p>
                             )}
                           </div>
+                        )}
+                      </div>
+
+                      {/* F-011: Include in Report Checkbox */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <input
+                            id={`includeInReport-${index}`}
+                            type="checkbox"
+                            className="w-5 h-5 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
+                            checked={video.includeInReport}
+                            onChange={(e) => updateVideo(index, 'includeInReport', e.target.checked)}
+                          />
+                          <label htmlFor={`includeInReport-${index}`} className="flex items-center gap-2 cursor-pointer">
+                            <CheckSquare className="w-5 h-5 text-gray-500" />
+                            <span className="text-gray-700 dark:text-gray-300">Incluir este vídeo no relatório (contabilizar segundos)</span>
+                          </label>
+                        </div>
+                        {!video.includeInReport && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 ml-8">
+                            Este vídeo ficará arquivado para consulta, mas não contará no relatório.
+                          </p>
                         )}
                       </div>
 
