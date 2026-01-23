@@ -29,15 +29,16 @@ export default function Login() {
   const loadPublicSettings = async () => {
     try {
       const response = await settingsApi.getPublic();
-      const settings = response.data.settings;
-      if (settings.company_logo_path) {
+      const settings = response.data?.settings || response.data;
+      if (settings?.company_logo_path) {
         setCompanyLogo(settings.company_logo_path);
       }
-      if (settings.company_name) {
+      if (settings?.company_name) {
         setCompanyName(settings.company_name);
       }
     } catch (error) {
       console.error('Error loading public settings:', error);
+      // Não quebrar a página se settings falhar
     }
   };
 
