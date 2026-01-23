@@ -20,6 +20,31 @@ function generateSlug(text: string): string {
         .substring(0, 50); // Limita tamanho
 }
 
+// Helper function to validate share token and get share link
+async function validateShareToken(token: string): Promise<ShareLink | null> {
+    try {
+        const shareLink = await ShareLink.findOne({
+            where: { 
+                [Op.or]: [
+                    { token },
+                    { customSlug: token }
+                ],
+                active: true 
+            },
+            include: [{ model: Video, as: 'videos' }]
+        });
+
+        if (!shareLink) return null;
+        if (shareLink.expiresAt && new Date() > shareLink.expiresAt) return null;
+        if (shareLink.maxDownloads && shareLink.downloads >= shareLink.maxDownloads) return null;
+
+        return shareLink;
+    } catch (error) {
+        console.error('Error validating share token:', error);
+        return null;
+    }
+}
+
 // Função auxiliar para gerar slug único
 async function generateUniqueSlug(baseSlug: string, videoIds: number[]): Promise<string> {
     let slug = baseSlug;
