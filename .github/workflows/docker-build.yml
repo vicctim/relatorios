@@ -23,7 +23,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      administration: write
     
     steps:
       - name: Checkout repository
@@ -96,7 +95,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-      administration: write
     
     steps:
       - name: Checkout repository
