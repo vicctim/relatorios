@@ -30,8 +30,15 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copiar arquivos buildados
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copiar favicon se existir na pasta public
-COPY --from=builder /app/public/favicon.svg /usr/share/nginx/html/favicon.svg 2>/dev/null || true
+# Copiar favicon se existir na pasta public do builder
+# Usar script shell temporário para verificar e copiar
+RUN --mount=from=builder,source=/app/public,target=/tmp/public \
+    if [ -f /tmp/public/favicon.svg ]; then \
+      cp /tmp/public/favicon.svg /usr/share/nginx/html/favicon.svg && \
+      echo "Favicon copiado com sucesso"; \
+    else \
+      echo "Favicon não encontrado, continuando sem ele"; \
+    fi
 
 # Expor porta
 EXPOSE 80
