@@ -25,7 +25,22 @@ As imagens são publicadas no GitHub Container Registry:
 
 ## 🔐 Autenticação
 
-### Para Pull das Imagens na VPS
+### Imagens Públicas
+
+As imagens são configuradas como **públicas** automaticamente pelo workflow. Isso significa que você **não precisa** fazer login no Docker para fazer pull das imagens.
+
+### Pull das Imagens (Sem Autenticação)
+
+Como as imagens são públicas, você pode fazer pull diretamente:
+
+```bash
+docker pull ghcr.io/vicctim/relatorios/backend:latest
+docker pull ghcr.io/vicctim/relatorios/frontend:latest
+```
+
+### Se as Imagens Forem Privadas (Fallback)
+
+Se por algum motivo as imagens não estiverem públicas, você pode:
 
 1. **Criar Personal Access Token (PAT):**
    - GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
@@ -43,12 +58,6 @@ As imagens são publicadas no GitHub Container Registry:
    docker login ghcr.io
    # Username: vicctim
    # Password: <seu-token>
-   ```
-
-3. **Pull das imagens:**
-   ```bash
-   docker pull ghcr.io/vicctim/relatorios/backend:latest
-   docker pull ghcr.io/vicctim/relatorios/frontend:latest
    ```
 
 ### Para Builds Automáticos

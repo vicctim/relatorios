@@ -23,6 +23,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      administration: write
     
     steps:
       - name: Checkout repository
@@ -69,12 +70,24 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
+      - name: Make backend image public
+        if: github.event_name != 'pull_request'
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}:latest"
+          gh api \
+            -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/orgs/${{ github.repository_owner }}/packages/container/${{ env.BACKEND_IMAGE_NAME }}/visibility" \
+            -f visibility=public || echo "Failed to make image public (may need manual configuration)"
+
   build-frontend:
     name: Build Frontend Image
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      administration: write
     
     steps:
       - name: Checkout repository
@@ -122,6 +135,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+
+      - name: Make frontend image public
+        if: github.event_name != 'pull_request'
+        run: |
+          IMAGE="${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}:latest"
+          gh api \
+            -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/orgs/${{ github.repository_owner }}/packages/container/${{ env.FRONTEND_IMAGE_NAME }}/visibility" \
+            -f visibility=public || echo "Failed to make image public (may need manual configuration)"
 
   summary:
     name: Build Summary
