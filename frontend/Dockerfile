@@ -15,6 +15,9 @@ COPY . .
 ARG VITE_API_URL
 ENV VITE_API_URL=${VITE_API_URL}
 
+# Garantir que NODE_ENV está definido como production
+ENV NODE_ENV=production
+
 # Build da aplicação
 RUN npm run build
 

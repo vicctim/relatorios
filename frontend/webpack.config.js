@@ -133,6 +133,7 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             cacheDirectory: true,
+            envName: isDevelopment ? 'development' : 'production',
           },
         },
       },
