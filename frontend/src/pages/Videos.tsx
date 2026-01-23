@@ -256,7 +256,7 @@ export default function Videos() {
         professionalId: parseInt(editForm.professionalId),
         isTv: editForm.isTv,
         tvTitle: editForm.isTv ? editForm.tvTitle : null,
-        customDurationSeconds: editForm.customDurationSeconds ? parseInt(editForm.customDurationSeconds) : null,
+        customDurationSeconds: editForm.customDurationSeconds ? parseInt(editForm.customDurationSeconds) : undefined,
         includeInReport: editForm.includeInReport, // F-011
       });
       toast.success('Vídeo atualizado com sucesso');
