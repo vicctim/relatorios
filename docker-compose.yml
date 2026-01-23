@@ -1,27 +1,85 @@
-# Docker Compose para desenvolvimento local
-# Apenas MySQL em container, backend/frontend rodam localmente
-version: '3.8'
+version: "3.8"
 
 services:
   mysql:
     image: mysql:8.0
-    container_name: relatorios-mysql
+    container_name: relatorios_mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: relatorios
-      MYSQL_USER: relatorios
-      MYSQL_PASSWORD: relatorios123
-    ports:
-      - "3307:3306"
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    networks:
+      - default
+
+  backend:
+    image: ghcr.io/vicctim/relatorios/backend:latest
+    container_name: relatorios_backend
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-500}
+      - COMPRESSION_THRESHOLD_MB=${COMPRESSION_THRESHOLD_MB:-100}
+      - PORT=3001
+      - TZ=America/Sao_Paulo
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
+    volumes:
+      - ./uploads:/app/uploads
+    cpus: 2
+    mem_limit: 2g
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - default
+      - rede_publica
+    healthcheck:
+      test: [ "CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    image: ghcr.io/vicctim/relatorios/frontend:latest
+    container_name: relatorios_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    networks:
+      - default
+      - rede_publica
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/" ]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
 volumes:
   mysql_data:
+
+networks:
+  default:
+  rede_publica:
+    external: true
+    name: rede_publica
