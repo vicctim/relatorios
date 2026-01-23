@@ -47,6 +47,8 @@ services:
       PORT: 3001
       TZ: America/Sao_Paulo
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-false}  # Setar true apenas no primeiro deploy
+      PUPPETEER_EXECUTABLE_PATH: /usr/bin/chromium
+      PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
