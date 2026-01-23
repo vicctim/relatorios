@@ -180,9 +180,10 @@ export const reportsApi = {
   getMonthlyUsage: (year: number, month: number) => api.get(`/reports/${year}/${month}/usage`),
   getExport: (startDate: string, endDate: string, dateField: 'requestDate' | 'completionDate' = 'requestDate') =>
     api.get('/reports/export', { params: { startDate, endDate, dateField } }),
-  getExportPdfUrl: (startDate: string, endDate: string, dateField: 'requestDate' | 'completionDate' = 'requestDate') => {
+  getExportPdfUrl: (startDate: string, endDate: string, dateField: 'requestDate' | 'completionDate' = 'requestDate', manualRollover?: number) => {
     const token = localStorage.getItem('token');
-    return `/api/reports/export/pdf?startDate=${startDate}&endDate=${endDate}&dateField=${dateField}${token ? `&token=${token}` : ''}`;
+    const rolloverParam = manualRollover !== undefined && manualRollover !== null ? `&manualRollover=${manualRollover}` : '';
+    return `/api/reports/export/pdf?startDate=${startDate}&endDate=${endDate}&dateField=${dateField}${rolloverParam}${token ? `&token=${token}` : ''}`;
   },
   // History API
   getHistory: () => api.get('/reports/history'),

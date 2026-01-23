@@ -384,6 +384,9 @@ class PDFService {
     professionals: ProfessionalGroup[];
     totalUsed: number;
     totalVideos: number;
+    limit?: number;
+    rollover?: number;
+    remaining?: number;
   }): Promise<Buffer> {
     const settings = await this.getSettings();
 
@@ -492,7 +495,7 @@ class PDFService {
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 15px;
       margin-bottom: 30px;
     }
@@ -610,6 +613,15 @@ class PDFService {
     <div class="stat-card primary">
       <div class="stat-label">Total Utilizado</div>
       <div class="stat-value">${this.formatDuration(data.totalUsed)}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Limite</div>
+      <div class="stat-value">${this.formatDuration(data.limit || 0)}</div>
+      ${data.rollover && data.rollover > 0 ? `<div style="font-size: 9px; margin-top: 3px; opacity: 0.8;">+${this.formatDuration(data.rollover)} rollover</div>` : ''}
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Restante</div>
+      <div class="stat-value">${this.formatDuration(data.remaining || 0)}</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Total de Vídeos</div>

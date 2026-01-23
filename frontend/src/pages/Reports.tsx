@@ -24,6 +24,7 @@ export default function Reports() {
   const [exportDateField, setExportDateField] = useState<'requestDate' | 'completionDate'>('requestDate');
   const [exportPreview, setExportPreview] = useState<{ totalVideos: number; totalDuration: number; parentVideosCount?: number; versionsCount?: number } | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [manualRollover, setManualRollover] = useState<string>('');
 
   // History state
   const [history, setHistory] = useState<any[]>([]);
@@ -153,7 +154,8 @@ export default function Reports() {
     setIsExporting(true);
     const startStr = exportStartDate.toISOString().split('T')[0];
     const endStr = exportEndDate.toISOString().split('T')[0];
-    const url = reportsApi.getExportPdfUrl(startStr, endStr, exportDateField);
+    const rolloverValue = manualRollover.trim() ? parseInt(manualRollover.trim()) : undefined;
+    const url = reportsApi.getExportPdfUrl(startStr, endStr, exportDateField, rolloverValue);
     
     // Abrir em nova aba
     window.open(url, '_blank');
@@ -163,6 +165,7 @@ export default function Reports() {
       loadHistory();
       setIsExporting(false);
       setShowExportModal(false);
+      setManualRollover(''); // Reset manual rollover
     }, 3000);
   };
 
@@ -173,6 +176,7 @@ export default function Reports() {
     const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     setExportStartDate(firstDay);
     setExportEndDate(lastDay);
+    setManualRollover(''); // Reset manual rollover
     setShowExportModal(true);
   };
 
@@ -480,6 +484,25 @@ export default function Reports() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Manual Rollover Input */}
+          <div>
+            <label className="label">
+              Segundos Acumulados Manualmente (Opcional)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              className="input"
+              placeholder="Ex: 500 (deixe vazio para usar cálculo automático)"
+              value={manualRollover}
+              onChange={(e) => setManualRollover(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Informe manualmente os segundos acumulados de meses anteriores. Se deixado vazio, será usado o cálculo automático baseado nos meses configurados.
+            </p>
           </div>
 
           {/* Preview */}

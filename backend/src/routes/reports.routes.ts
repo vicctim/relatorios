@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticateToken, anyAuthenticated } from '../middleware/auth';
 import reportService from '../services/report.service';
 import pdfService from '../services/pdf.service';
-import { DownloadLog, Video, User, ExportedReport } from '../models';
+import { DownloadLog, Video, User, ExportedReport, Setting } from '../models';
 import { directories } from '../middleware/upload';
 import path from 'path';
 import fs from 'fs';
@@ -75,7 +75,7 @@ router.get('/export', authenticateToken, anyAuthenticated, async (req: Request, 
 // GET /api/reports/export/pdf - Generate PDF report by date range
 router.get('/export/pdf', authenticateToken, anyAuthenticated, async (req: Request, res: Response): Promise<void> => {
   try {
-    const { startDate, endDate, dateField = 'requestDate' } = req.query;
+    const { startDate, endDate, dateField = 'requestDate', manualRollover } = req.query;
 
     if (!startDate || !endDate) {
       res.status(400).json({ error: 'Data inicial e final são obrigatórias' });
@@ -124,6 +124,13 @@ router.get('/export/pdf', authenticateToken, anyAuthenticated, async (req: Reque
       }
     }
 
+    // Calcular limite com rollover manual se fornecido
+    const baseLimit = await Setting.getValue<number>('monthly_limit_seconds', 1100);
+    const manualRolloverValue = manualRollover ? parseInt(manualRollover as string) : undefined;
+    const rollover = manualRolloverValue !== undefined && !isNaN(manualRolloverValue) ? manualRolloverValue : 0;
+    const limit = baseLimit + rollover;
+    const remaining = Math.max(0, limit - report.totalDuration);
+
     const pdfData = {
       startDate: start,
       endDate: end,
@@ -155,6 +162,9 @@ router.get('/export/pdf', authenticateToken, anyAuthenticated, async (req: Reque
       totalVideos: report.totalVideos,
       parentVideosCount,
       versionsCount,
+      limit,
+      rollover,
+      remaining,
     };
 
     const pdfBuffer = await pdfService.generateDateRangeReportPDF(pdfData);
