@@ -53,9 +53,14 @@ WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/package-lock.json ./package-lock.json
+
+# Copiar script de entrypoint
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Criar diretórios necessários
-RUN mkdir -p uploads/videos uploads/logos uploads/temp uploads/thumbnails uploads/previews
+RUN mkdir -p uploads/videos uploads/logos uploads/temp uploads/thumbnails uploads/reports
 
 # Usuário não-root para segurança
 RUN useradd -m -u 1000 appuser && \
@@ -69,5 +74,5 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:3001/api/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1))"
 
-# Iniciar aplicação
-CMD ["node", "dist/app.js"]
+# Iniciar aplicação via entrypoint
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
