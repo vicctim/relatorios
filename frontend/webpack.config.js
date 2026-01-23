@@ -1,4 +1,5 @@
 const path = require('path');
+const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 
@@ -164,6 +165,9 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: './index.html',
+    }),
+    new webpack.DefinePlugin({
+      'import.meta.env.VITE_SHARE_URL': JSON.stringify(process.env.VITE_SHARE_URL || ''),
     }),
     isDevelopment && new ReactRefreshWebpackPlugin(),
     isDevelopment && new SuppressWatchpackErrorsPlugin(),

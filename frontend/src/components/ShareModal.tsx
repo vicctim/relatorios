@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Copy, Link as LinkIcon, Check, AlertCircle } from 'lucide-react';
 import Modal from './ui/Modal';
 import { sharesApi, videosApi } from '../services/api';
+import { getShareUrl } from '../utils/formatters';
 import toast from 'react-hot-toast';
 
 interface ShareModalProps {
@@ -99,7 +100,7 @@ export default function ShareModal({ isOpen, onClose, videoIds }: ShareModalProp
     const handleUseExisting = () => {
         if (!existingShare) return;
         const slug = existingShare.customSlug || existingShare.token;
-        const link = `${window.location.origin}/s/${slug}`;
+        const link = getShareUrl(slug);
         setGeneratedLink(link);
     };
 
@@ -116,7 +117,7 @@ export default function ShareModal({ isOpen, onClose, videoIds }: ShareModalProp
             });
 
             const slug = response.data.customSlug || response.data.token;
-            const link = `${window.location.origin}/s/${slug}`;
+            const link = getShareUrl(slug);
             setGeneratedLink(link);
             toast.success('Link criado com sucesso!');
 

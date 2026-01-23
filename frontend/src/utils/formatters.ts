@@ -151,3 +151,18 @@ export function formatPhoneNumber(phone: string): string {
 
   return phone;
 }
+
+/**
+ * Gera URL de compartilhamento usando domínio configurado ou fallback para window.location.origin
+ */
+export function getShareUrl(slug: string): string {
+  // Usar variável de ambiente se disponível, senão usar window.location.origin
+  const shareDomain = (import.meta.env.VITE_SHARE_URL || '').trim();
+  const baseUrl = shareDomain || window.location.origin;
+  
+  // Garantir que não tenha barra dupla
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
+  const cleanSlug = slug.replace(/^\/+/, '');
+  
+  return `${cleanBaseUrl}/s/${cleanSlug}`;
+}

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link2, Copy, ExternalLink, Calendar, Download, Check, Trash2, Eye, Play, Clock, Film, User, Tv, Smartphone } from 'lucide-react';
 import { sharesApi, videosApi } from '../services/api';
 import { LoadingSpinner, Modal } from '../components/ui';
-import { formatDate, formatDuration } from '../utils/formatters';
+import { formatDate, formatDuration, getShareUrl } from '../utils/formatters';
 import { Video } from '../types';
 import toast from 'react-hot-toast';
 
@@ -54,13 +54,13 @@ export default function Shares() {
     }
   };
 
-  const getShareUrl = (share: ShareLink) => {
+  const getShareUrlForShare = (share: ShareLink) => {
     const slug = share.customSlug || share.token;
-    return `${window.location.origin}/s/${slug}`;
+    return getShareUrl(slug);
   };
 
   const handleCopy = (share: ShareLink) => {
-    const url = getShareUrl(share);
+    const url = getShareUrlForShare(share);
     navigator.clipboard.writeText(url);
     setCopiedId(share.id);
     setTimeout(() => setCopiedId(null), 2000);
@@ -171,7 +171,7 @@ export default function Shares() {
                       )}
                     </button>
                     <a
-                      href={getShareUrl(share)}
+                      href={getShareUrlForShare(share)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
@@ -201,7 +201,7 @@ export default function Shares() {
                 {/* URL */}
                 <div className="mb-3">
                   <code className="block text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded truncate">
-                    {getShareUrl(share)}
+                    {getShareUrlForShare(share)}
                   </code>
                 </div>
 
