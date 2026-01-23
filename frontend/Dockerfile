@@ -13,9 +13,9 @@ COPY . .
 
 # Build arguments para variáveis de ambiente
 ARG VITE_API_URL
-ARG VITE_SHARE_URL
+ARG SHARE_URL
 ENV VITE_API_URL=${VITE_API_URL}
-ENV VITE_SHARE_URL=${VITE_SHARE_URL}
+ENV SHARE_URL=${SHARE_URL}
 
 # Garantir que NODE_ENV está definido como production
 ENV NODE_ENV=production

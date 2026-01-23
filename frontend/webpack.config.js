@@ -167,7 +167,7 @@ module.exports = {
       template: './index.html',
     }),
     new webpack.DefinePlugin({
-      'import.meta.env.VITE_SHARE_URL': JSON.stringify(process.env.VITE_SHARE_URL || ''),
+      'process.env.SHARE_URL': JSON.stringify(process.env.SHARE_URL || ''),
     }),
     isDevelopment && new ReactRefreshWebpackPlugin(),
     isDevelopment && new SuppressWatchpackErrorsPlugin(),

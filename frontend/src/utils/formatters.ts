@@ -157,7 +157,8 @@ export function formatPhoneNumber(phone: string): string {
  */
 export function getShareUrl(slug: string): string {
   // Usar variável de ambiente se disponível, senão usar window.location.origin
-  const shareDomain = (import.meta.env.VITE_SHARE_URL || '').trim();
+  // process.env.SHARE_URL é injetado pelo webpack.DefinePlugin
+  const shareDomain = (process.env.SHARE_URL || '').trim();
   const baseUrl = shareDomain || window.location.origin;
   
   // Garantir que não tenha barra dupla

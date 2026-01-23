@@ -15,7 +15,7 @@ Os links de compartilhamento agora podem usar um domínio diferente do sistema p
 Adicione no seu `.env`:
 
 ```bash
-VITE_SHARE_URL=https://arquivos.pixfilmes.com
+SHARE_URL=https://arquivos.pixfilmes.com
 ```
 
 **Importante:** Não inclua a barra final (`/`) no final da URL.
@@ -69,7 +69,7 @@ Você precisa criar um **novo Proxy Host** no Nginx Proxy Manager para o domíni
 
 ## 🔄 Rebuild do Frontend
 
-Após adicionar `VITE_SHARE_URL` no `.env`, você precisa fazer rebuild do frontend:
+Após adicionar `SHARE_URL` no `.env`, você precisa fazer rebuild do frontend:
 
 ### Via CI/CD (Recomendado)
 
@@ -98,7 +98,7 @@ docker-compose -f docker-compose.portainer.yml up -d frontend
 **Causa:** Frontend não foi reconstruído com a nova variável.
 
 **Solução:**
-1. Verifique se `VITE_SHARE_URL` está no `.env`
+1. Verifique se `SHARE_URL` está no `.env`
 2. Faça rebuild do frontend
 3. Limpe o cache do navegador
 
@@ -124,4 +124,4 @@ docker-compose -f docker-compose.portainer.yml up -d frontend
 - O domínio de compartilhamento **deve** apontar para o mesmo frontend container
 - As rotas `/api` e `/uploads` devem fazer proxy para o backend
 - A rota `/s/{slug}` é tratada pelo React Router no frontend
-- Se `VITE_SHARE_URL` não for definida, o sistema usa `window.location.origin` como fallback
+- Se `SHARE_URL` não for definida, o sistema usa `window.location.origin` como fallback
