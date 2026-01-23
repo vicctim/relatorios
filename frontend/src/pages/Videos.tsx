@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Search, Play, Download, Trash2, Filter, ChevronLeft, ChevronRight, Plus, Pencil, Smartphone, Tv, Clock, Share2, CheckSquare, Square, Calendar, Copy, User, Check, Film } from 'lucide-react';
 import { videosApi, professionalsApi } from '../services/api';
 import { Video, Professional, Pagination } from '../types';
