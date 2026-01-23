@@ -129,7 +129,11 @@ router.get('/export/pdf', authenticateToken, anyAuthenticated, async (req: Reque
     const manualRolloverValue = manualRollover ? parseInt(manualRollover as string) : undefined;
     const rollover = manualRolloverValue !== undefined && !isNaN(manualRolloverValue) ? manualRolloverValue : 0;
     const limit = baseLimit + rollover;
-    const remaining = Math.max(0, limit - report.totalDuration);
+    // Total utilizado deve ser reduzido pelo rollover (se rollover > 0)
+    // Se informou 30s de rollover, significa que 30s já foram usados no mês anterior
+    // então o total utilizado deste mês deve ser reduzido por esses 30s
+    const totalUsedAdjusted = Math.max(0, report.totalDuration - rollover);
+    const remaining = Math.max(0, limit - totalUsedAdjusted);
 
     const pdfData = {
       startDate: start,
@@ -158,13 +162,14 @@ router.get('/export/pdf', authenticateToken, anyAuthenticated, async (req: Reque
         })),
         totalDuration: prof.totalDuration,
       })),
-      totalUsed: report.totalDuration,
+      totalUsed: totalUsedAdjusted,
       totalVideos: report.totalVideos,
       parentVideosCount,
       versionsCount,
       limit,
       rollover,
       remaining,
+      frontendUrl: process.env.FRONTEND_URL || 'https://relatorio.pixfilmes.com',
     };
 
     const pdfBuffer = await pdfService.generateDateRangeReportPDF(pdfData);

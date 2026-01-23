@@ -37,6 +37,7 @@ interface ReportData {
   limit: number;
   rollover: number;
   remaining: number;
+  frontendUrl?: string;
 }
 
 class PDFService {
@@ -56,6 +57,10 @@ class PDFService {
       return `${mins}min ${secs}s`;
     }
     return `${secs}s`;
+  }
+
+  private formatDurationSeconds(seconds: number): string {
+    return `${Math.round(seconds)}s`;
   }
 
   private getMonthName(month: number): string {
@@ -387,6 +392,7 @@ class PDFService {
     limit?: number;
     rollover?: number;
     remaining?: number;
+    frontendUrl?: string;
   }): Promise<Buffer> {
     const settings = await this.getSettings();
 
@@ -612,16 +618,8 @@ class PDFService {
   <div class="stats-grid">
     <div class="stat-card primary">
       <div class="stat-label">Total Utilizado</div>
-      <div class="stat-value">${this.formatDuration(data.totalUsed)}</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Limite</div>
-      <div class="stat-value">${this.formatDuration(data.limit || 0)}</div>
-      ${data.rollover && data.rollover > 0 ? `<div style="font-size: 9px; margin-top: 3px; opacity: 0.8;">+${this.formatDuration(data.rollover)} rollover</div>` : ''}
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Restante</div>
-      <div class="stat-value">${this.formatDuration(data.remaining || 0)}</div>
+      <div class="stat-value">${this.formatDurationSeconds(data.totalUsed)}</div>
+      ${data.rollover && data.rollover > 0 ? `<div style="font-size: 9px; margin-top: 3px; opacity: 0.8;">(-${this.formatDurationSeconds(data.rollover)} rollover)</div>` : ''}
     </div>
     <div class="stat-card">
       <div class="stat-label">Total de Vídeos</div>
@@ -649,6 +647,8 @@ class PDFService {
         const versionsList = versions.length > 0 
           ? versions.map((v: any) => v.resolutionLabel || '').filter(Boolean).join(', ')
           : '';
+        const frontendUrl = data.frontendUrl || 'https://relatorio.pixfilmes.com';
+        const videoUrl = `${frontendUrl}/videos/${video.id}`;
         return `
             <tr>
               <td>
@@ -661,8 +661,11 @@ class PDFService {
               <td>${format(new Date(video.requestDate), 'dd/MM/yyyy')}</td>
               <td>${format(new Date(video.completionDate), 'dd/MM/yyyy')}</td>
               <td class="duration-cell">
-                ${this.formatDuration(totalDuration)}
-                ${versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDuration(versionsTotal)} de ${versions.length} versã${versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
+                ${this.formatDurationSeconds(totalDuration)}
+                ${versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDurationSeconds(versionsTotal)} de ${versions.length} versã${versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
+              </td>
+              <td style="text-align: center;">
+                <a href="${videoUrl}" style="color: #4CAF50; text-decoration: none; font-size: 10px; font-weight: 600;">▶ Reproduzir</a>
               </td>
             </tr>
           `;

@@ -158,12 +158,27 @@ export function formatPhoneNumber(phone: string): string {
 export function getShareUrl(slug: string): string {
   // Usar variável de ambiente se disponível, senão usar window.location.origin
   // process.env.SHARE_URL é injetado pelo webpack.DefinePlugin
-  const shareDomain = (process.env.SHARE_URL || '').trim();
-  const baseUrl = shareDomain || window.location.origin;
+  // Em runtime, process.env pode não estar disponível, então verificamos também via window
+  let shareDomain = '';
+  
+  // Tentar obter do process.env (injetado pelo webpack)
+  if (typeof process !== 'undefined' && process.env && process.env.SHARE_URL) {
+    shareDomain = String(process.env.SHARE_URL).trim();
+  }
+  
+  // Se não encontrou, usar window.location.origin como fallback
+  const baseUrl = shareDomain || (typeof window !== 'undefined' ? window.location.origin : 'https://relatorio.pixfilmes.com');
   
   // Garantir que não tenha barra dupla
   const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
   const cleanSlug = slug.replace(/^\/+/, '');
   
-  return `${cleanBaseUrl}/s/${cleanSlug}`;
+  const finalUrl = `${cleanBaseUrl}/s/${cleanSlug}`;
+  
+  // Debug em desenvolvimento
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[getShareUrl] shareDomain:', shareDomain, 'baseUrl:', baseUrl, 'finalUrl:', finalUrl);
+  }
+  
+  return finalUrl;
 }
