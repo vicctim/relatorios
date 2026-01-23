@@ -203,3 +203,57 @@ export function getShareUrl(slug: string): string {
   
   return finalUrl;
 }
+
+/**
+ * Calcula o aspect ratio CSS baseado nas dimensões do vídeo
+ * Retorna um objeto de estilo para aplicar no container do player
+ */
+export function getVideoAspectRatioStyle(
+  widthPixels?: number | null,
+  heightPixels?: number | null
+): React.CSSProperties {
+  // Se não tiver dimensões, usa 16:9 como padrão
+  if (!widthPixels || !heightPixels) {
+    return { aspectRatio: '16 / 9' };
+  }
+
+  // Calcula o aspect ratio
+  const ratio = widthPixels / heightPixels;
+
+  // Proporções específicas que o usuário pediu:
+  // 9:16 (1080x1920) - vertical/portrait
+  // 1:1 (quadrado)
+  // 4:3 (landscape tradicional)
+  // 3:4 (vertical)
+  
+  // Tolerância para detectar proporções próximas
+  const tolerance = 0.01;
+  
+  // 9:16 = 0.5625
+  if (Math.abs(ratio - 9/16) < tolerance) {
+    return { aspectRatio: '9 / 16' };
+  }
+  
+  // 1:1 = 1.0
+  if (Math.abs(ratio - 1) < tolerance) {
+    return { aspectRatio: '1 / 1' };
+  }
+  
+  // 4:3 = 1.333...
+  if (Math.abs(ratio - 4/3) < tolerance) {
+    return { aspectRatio: '4 / 3' };
+  }
+  
+  // 3:4 = 0.75
+  if (Math.abs(ratio - 3/4) < tolerance) {
+    return { aspectRatio: '3 / 4' };
+  }
+  
+  // Para outras proporções, usa o cálculo exato
+  // Simplifica a fração usando MDC
+  const gcd = (a: number, b: number): number => b === 0 ? a : gcd(b, a % b);
+  const simplifiedWidth = widthPixels / gcd(widthPixels, heightPixels);
+  const simplifiedHeight = heightPixels / gcd(widthPixels, heightPixels);
+  
+  return { aspectRatio: `${simplifiedWidth} / ${simplifiedHeight}` };
+}

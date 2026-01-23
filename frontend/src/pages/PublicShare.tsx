@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Download, FileVideo, Calendar, AlertCircle, Archive, Loader2, User, Clock, Play } from 'lucide-react';
 import { sharesApi, videosApi } from '../services/api';
-import { formatDuration, formatFileSize, formatDate } from '../utils/formatters';
+import { formatDuration, formatFileSize, formatDate, getVideoAspectRatioStyle } from '../utils/formatters';
 import { LoadingSpinner, Modal } from '../components/ui';
 import toast from 'react-hot-toast';
 
@@ -15,6 +15,8 @@ interface SharedVideo {
     thumbnailPath: string | null;
     createdAt: string;
     originalFilename: string;
+    widthPixels?: number;
+    heightPixels?: number;
 }
 
 interface ShareLinkData {
@@ -309,12 +311,15 @@ export default function PublicShare() {
             >
                 {playingVideo && token && (
                     <div className="space-y-4">
-                        <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                        <div 
+                            className="bg-black rounded-lg overflow-hidden w-full"
+                            style={getVideoAspectRatioStyle(playingVideo.widthPixels, playingVideo.heightPixels)}
+                        >
                             <video
                                 src={`/api/shares/${token}/stream/${playingVideo.id}`}
                                 controls
                                 autoPlay
-                                className="w-full h-full"
+                                className="w-full h-full object-contain"
                                 onError={(e) => {
                                     console.error('Video playback error:', e);
                                     toast.error('Erro ao reproduzir vídeo. Verifique se o arquivo existe.');

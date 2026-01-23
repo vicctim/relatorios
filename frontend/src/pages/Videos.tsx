@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Search, Play, Download, Trash2, Filter, ChevronLeft, ChevronRight, Plus, Pencil, Smartphone, Tv, Clock, Share2, CheckSquare, Square, Calendar, Copy, User, Check, Film } from 'lucide-react';
 import { videosApi, professionalsApi } from '../services/api';
 import { Video, Professional, Pagination } from '../types';
-import { formatDuration, formatDate, formatMonthYear } from '../utils/formatters';
+import { formatDuration, formatDate, formatMonthYear, getVideoAspectRatioStyle } from '../utils/formatters';
 import { LoadingSpinner, Modal } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import ShareModal from '../components/ShareModal';
@@ -789,12 +789,15 @@ export default function Videos() {
         ) : previewVideo ? (
           <div className="space-y-4">
             {/* Video Player */}
-            <div className="aspect-video bg-black rounded-lg overflow-hidden relative group">
+            <div 
+              className="bg-black rounded-lg overflow-hidden relative group w-full"
+              style={getVideoAspectRatioStyle(previewVideo.widthPixels, previewVideo.heightPixels)}
+            >
               <video
                 src={videosApi.getStreamUrl(previewVideo.id)}
                 controls
                 autoPlay
-                className="w-full h-full"
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   console.error('Video playback error:', e);
                   toast.error('Erro ao reproduzir vídeo. Verifique se o arquivo existe.');

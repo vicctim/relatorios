@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link2, Copy, ExternalLink, Calendar, Download, Check, Trash2, Eye, Play, Clock, Film, User, Tv, Smartphone } from 'lucide-react';
 import { sharesApi, videosApi } from '../services/api';
 import { LoadingSpinner, Modal } from '../components/ui';
-import { formatDate, formatDuration, getShareUrl } from '../utils/formatters';
+import { formatDate, formatDuration, getShareUrl, getVideoAspectRatioStyle } from '../utils/formatters';
 import { Video } from '../types';
 import toast from 'react-hot-toast';
 
@@ -292,12 +292,15 @@ export default function Shares() {
         ) : previewVideo ? (
           <div className="space-y-4">
             {/* Video Player */}
-            <div className="aspect-video bg-black rounded-lg overflow-hidden relative group">
+            <div 
+              className="bg-black rounded-lg overflow-hidden relative group w-full"
+              style={getVideoAspectRatioStyle(previewVideo.widthPixels, previewVideo.heightPixels)}
+            >
               <video
                 src={videosApi.getStreamUrl(previewVideo.id)}
                 controls
                 autoPlay
-                className="w-full h-full"
+                className="w-full h-full object-contain"
                 onError={(e) => {
                   console.error('Video playback error:', e);
                   toast.error('Erro ao reproduzir vídeo. Verifique se o arquivo existe.');

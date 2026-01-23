@@ -302,7 +302,7 @@ router.get('/:token', async (req: Request, res: Response) => {
                 {
                     model: Video,
                     as: 'videos',
-                    attributes: ['id', 'title', 'durationSeconds', 'resolutionLabel', 'fileSizeBytes', 'thumbnailPath', 'createdAt', 'originalFilename', 'storedFilename', 'filePath', 'isTv', 'tvTitle'],
+                    attributes: ['id', 'title', 'durationSeconds', 'resolutionLabel', 'fileSizeBytes', 'thumbnailPath', 'createdAt', 'originalFilename', 'storedFilename', 'filePath', 'isTv', 'tvTitle', 'widthPixels', 'heightPixels'],
                     through: { attributes: [] }
                 },
                 {
