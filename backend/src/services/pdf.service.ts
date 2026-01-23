@@ -643,25 +643,26 @@ class PDFService {
     <tbody>
       ${data.professionals.flatMap((prof) =>
       prof.videos.map((video) => {
-        const versionsTotal = video.versions.reduce((sum, v) => sum + v.calculatedDuration, 0);
-        const totalDuration = video.calculatedDuration + versionsTotal;
-        const versionsList = video.versions.length > 0 
-          ? video.versions.map(v => v.resolutionLabel).join(', ')
+        const versions = video.versions || [];
+        const versionsTotal = versions.reduce((sum: number, v: any) => sum + (v.calculatedDuration || 0), 0);
+        const totalDuration = (video.calculatedDuration || 0) + versionsTotal;
+        const versionsList = versions.length > 0 
+          ? versions.map((v: any) => v.resolutionLabel || '').filter(Boolean).join(', ')
           : '';
         return `
             <tr>
               <td>
-                <span class="video-title">${video.title}</span>
+                <span class="video-title">${video.title || ''}</span>
                 ${video.isTv && video.tvTitle ? `<span class="video-tv">TV: ${video.tvTitle}</span>` : ''}
                 ${versionsList ? `<div style="font-size: 9px; color: #666; margin-top: 3px;">Versões: ${versionsList}</div>` : ''}
               </td>
-              <td>${video.resolutionLabel}</td>
-              <td>${prof.name}</td>
+              <td>${video.resolutionLabel || ''}</td>
+              <td>${prof.name || ''}</td>
               <td>${format(new Date(video.requestDate), 'dd/MM/yyyy')}</td>
               <td>${format(new Date(video.completionDate), 'dd/MM/yyyy')}</td>
               <td class="duration-cell">
                 ${this.formatDuration(totalDuration)}
-                ${video.versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDuration(versionsTotal)} de ${video.versions.length} versã${video.versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
+                ${versions.length > 0 ? `<div class="versions-list" style="color: #4CAF50; margin-top: 2px;">(+ ${this.formatDuration(versionsTotal)} de ${versions.length} versã${versions.length === 1 ? 'o' : 'ões'})</div>` : ''}
               </td>
             </tr>
           `;
