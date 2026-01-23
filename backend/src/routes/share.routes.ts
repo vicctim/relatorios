@@ -140,6 +140,99 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
     }
 });
 
+// GET /api/shares/:token/thumbnail/:videoId - Get thumbnail for shared video (Public)
+// IMPORTANTE: Esta rota deve vir ANTES de /:token para evitar conflito
+router.get('/:token/thumbnail/:videoId', async (req: Request, res: Response) => {
+    try {
+        const { token, videoId } = req.params;
+        const shareLink = await validateShareToken(token);
+
+        if (!shareLink) {
+            return res.status(404).json({ error: 'Link não encontrado ou expirado' });
+        }
+
+        const video = shareLink.videos?.find(v => v.id === Number(videoId));
+        if (!video) {
+            return res.status(404).json({ error: 'Vídeo não encontrado neste compartilhamento' });
+        }
+
+        if (!video.thumbnailPath) {
+            return res.status(404).json({ error: 'Thumbnail não disponível' });
+        }
+
+        const thumbnailPath = path.isAbsolute(video.thumbnailPath)
+            ? video.thumbnailPath
+            : path.join(process.cwd(), video.thumbnailPath);
+
+        if (!fs.existsSync(thumbnailPath)) {
+            return res.status(404).json({ error: 'Arquivo de thumbnail não encontrado' });
+        }
+
+        res.sendFile(thumbnailPath);
+    } catch (error) {
+        console.error('Get share thumbnail error:', error);
+        res.status(500).json({ error: 'Erro ao buscar thumbnail' });
+    }
+});
+
+// GET /api/shares/:token/stream/:videoId - Stream video for shared link (Public)
+// IMPORTANTE: Esta rota deve vir ANTES de /:token para evitar conflito
+router.get('/:token/stream/:videoId', async (req: Request, res: Response) => {
+    try {
+        const { token, videoId } = req.params;
+        const shareLink = await validateShareToken(token);
+
+        if (!shareLink) {
+            return res.status(404).json({ error: 'Link não encontrado ou expirado' });
+        }
+
+        const video = shareLink.videos?.find(v => v.id === Number(videoId));
+        if (!video) {
+            return res.status(404).json({ error: 'Vídeo não encontrado neste compartilhamento' });
+        }
+
+        const filePath = path.isAbsolute(video.filePath)
+            ? video.filePath
+            : path.join(process.cwd(), video.filePath);
+
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Arquivo não encontrado' });
+        }
+
+        const stat = fs.statSync(filePath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
+
+        if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+            const chunksize = end - start + 1;
+            const file = fs.createReadStream(filePath, { start, end });
+            const head = {
+                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': chunksize,
+                'Content-Type': 'video/mp4',
+            };
+            res.writeHead(206, head);
+            file.pipe(res);
+        } else {
+            const head = {
+                'Content-Length': fileSize,
+                'Content-Type': 'video/mp4',
+            };
+            res.writeHead(200, head);
+            fs.createReadStream(filePath).pipe(res);
+        }
+    } catch (error) {
+        console.error('Stream share video error:', error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Erro ao reproduzir vídeo' });
+        }
+    }
+});
+
 // Get share info (Public)
 // GET /api/shares/:token
 router.get('/:token', async (req: Request, res: Response) => {
@@ -265,6 +358,31 @@ router.post('/:token/download', async (req: Request, res: Response) => {
         if (!res.headersSent) res.status(500).json({ error: 'Erro ao baixar arquivos' });
     }
 });
+
+// Helper function to validate share token and get share link
+async function validateShareToken(token: string): Promise<ShareLink | null> {
+    try {
+        const shareLink = await ShareLink.findOne({
+            where: { 
+                [Op.or]: [
+                    { token },
+                    { customSlug: token }
+                ],
+                active: true 
+            },
+            include: [{ model: Video, as: 'videos' }]
+        });
+
+        if (!shareLink) return null;
+        if (shareLink.expiresAt && new Date() > shareLink.expiresAt) return null;
+        if (shareLink.maxDownloads && shareLink.downloads >= shareLink.maxDownloads) return null;
+
+        return shareLink;
+    } catch (error) {
+        console.error('Error validating share token:', error);
+        return null;
+    }
+}
 
 // List all share links (User authenticated - Global access)
 // GET /api/shares/list/my-shares

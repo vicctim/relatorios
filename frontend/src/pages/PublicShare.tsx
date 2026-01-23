@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Download, FileVideo, Calendar, AlertCircle, Archive, Loader2, User, Clock } from 'lucide-react';
+import { Download, FileVideo, Calendar, AlertCircle, Archive, Loader2, User, Clock, Play } from 'lucide-react';
 import { sharesApi, videosApi } from '../services/api';
 import { formatDuration, formatFileSize, formatDate } from '../utils/formatters';
-import { LoadingSpinner } from '../components/ui';
+import { LoadingSpinner, Modal } from '../components/ui';
 import toast from 'react-hot-toast';
 
 interface SharedVideo {
@@ -39,6 +39,7 @@ export default function PublicShare() {
     const [error, setError] = useState<string | null>(null);
     const [downloadingIds, setDownloadingIds] = useState<number[]>([]);
     const [downloadingZip, setDownloadingZip] = useState(false);
+    const [playingVideo, setPlayingVideo] = useState<SharedVideo | null>(null);
 
     useEffect(() => {
         if (token) {
@@ -217,22 +218,31 @@ export default function PublicShare() {
                                     className="flex flex-col sm:flex-row sm:items-center p-4 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors gap-4"
                                 >
                                     {/* Thumbnail */}
-                                    <div className="w-full sm:w-40 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 overflow-hidden relative">
+                                    <button
+                                        onClick={() => setPlayingVideo(video)}
+                                        className="w-full sm:w-40 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex-shrink-0 overflow-hidden relative group cursor-pointer"
+                                    >
                                         {video.thumbnailPath ? (
-                                            <img
-                                                src={videosApi.getThumbnailUrl(video.id)}
-                                                alt={video.title}
-                                                className="w-full h-full object-cover"
-                                                onError={(e) => {
-                                                    e.currentTarget.style.display = 'none';
-                                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                                }}
-                                            />
-                                        ) : null}
-                                        <div className={`${video.thumbnailPath ? 'hidden' : ''} flex items-center justify-center absolute inset-0 text-gray-400`}>
-                                            <FileVideo className="w-8 h-8" />
-                                        </div>
-                                    </div>
+                                            <>
+                                                <img
+                                                    src={token ? `/api/shares/${token}/thumbnail/${video.id}` : videosApi.getThumbnailUrl(video.id)}
+                                                    alt={video.title}
+                                                    className="w-full h-full object-cover"
+                                                    onError={(e) => {
+                                                        e.currentTarget.style.display = 'none';
+                                                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                                    }}
+                                                />
+                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <Play className="w-8 h-8 text-white" />
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex items-center justify-center absolute inset-0 text-gray-400">
+                                                <FileVideo className="w-8 h-8" />
+                                            </div>
+                                        )}
+                                    </button>
 
                                     {/* Info */}
                                     <div className="flex-1 min-w-0">
@@ -257,19 +267,28 @@ export default function PublicShare() {
                                         </div>
                                     </div>
 
-                                    {/* Action */}
-                                    <button
-                                        onClick={() => handleDownload(video)}
-                                        disabled={downloadingIds.includes(video.id)}
-                                        className="sm:self-center px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors flex items-center gap-2 justify-center"
-                                    >
-                                        {downloadingIds.includes(video.id) ? (
-                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                        ) : (
-                                            <Download className="w-4 h-4" />
-                                        )}
-                                        Baixar
-                                    </button>
+                                    {/* Actions */}
+                                    <div className="sm:self-center flex gap-2">
+                                        <button
+                                            onClick={() => setPlayingVideo(video)}
+                                            className="px-4 py-2 text-sm font-medium text-white bg-primary-600 dark:bg-primary-500 rounded-lg hover:bg-primary-700 dark:hover:bg-primary-600 transition-colors flex items-center gap-2 justify-center"
+                                        >
+                                            <Play className="w-4 h-4" />
+                                            Reproduzir
+                                        </button>
+                                        <button
+                                            onClick={() => handleDownload(video)}
+                                            disabled={downloadingIds.includes(video.id)}
+                                            className="px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 bg-primary-50 dark:bg-primary-900/20 rounded-lg hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors flex items-center gap-2 justify-center"
+                                        >
+                                            {downloadingIds.includes(video.id) ? (
+                                                <Loader2 className="w-4 h-4 animate-spin" />
+                                            ) : (
+                                                <Download className="w-4 h-4" />
+                                            )}
+                                            Baixar
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -280,6 +299,46 @@ export default function PublicShare() {
                     &copy; {new Date().getFullYear()} Pix Filmes. Pix Relatórios.
                 </div>
             </div>
+
+            {/* Video Player Modal */}
+            <Modal
+                isOpen={!!playingVideo}
+                onClose={() => setPlayingVideo(null)}
+                title={playingVideo?.originalFilename || playingVideo?.title || ''}
+                size="xl"
+            >
+                {playingVideo && token && (
+                    <div className="space-y-4">
+                        <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                            <video
+                                src={`/api/shares/${token}/stream/${playingVideo.id}`}
+                                controls
+                                autoPlay
+                                className="w-full h-full"
+                                onError={(e) => {
+                                    console.error('Video playback error:', e);
+                                    toast.error('Erro ao reproduzir vídeo. Verifique se o arquivo existe.');
+                                }}
+                            >
+                                Seu navegador não suporta a reprodução de vídeo.
+                            </video>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
+                            <span className="inline-flex items-center bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300 px-2.5 py-1 rounded-md text-xs font-medium">
+                                {playingVideo.resolutionLabel}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5" />
+                                {formatDuration(playingVideo.durationSeconds)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Archive className="w-3.5 h-3.5" />
+                                {formatFileSize(playingVideo.fileSizeBytes)}
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 }
