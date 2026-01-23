@@ -30,9 +30,9 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # Expor porta
 EXPOSE 80
 
-# Health check
+# Health check (nginx:alpine tem wget, mas vamos garantir que funcione)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
 
 # Iniciar Nginx
 CMD ["nginx", "-g", "daemon off;"]
