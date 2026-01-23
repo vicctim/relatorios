@@ -384,31 +384,6 @@ router.post('/:token/download', async (req: Request, res: Response) => {
     }
 });
 
-// Helper function to validate share token and get share link
-async function validateShareToken(token: string): Promise<ShareLink | null> {
-    try {
-        const shareLink = await ShareLink.findOne({
-            where: { 
-                [Op.or]: [
-                    { token },
-                    { customSlug: token }
-                ],
-                active: true 
-            },
-            include: [{ model: Video, as: 'videos' }]
-        });
-
-        if (!shareLink) return null;
-        if (shareLink.expiresAt && new Date() > shareLink.expiresAt) return null;
-        if (shareLink.maxDownloads && shareLink.downloads >= shareLink.maxDownloads) return null;
-
-        return shareLink;
-    } catch (error) {
-        console.error('Error validating share token:', error);
-        return null;
-    }
-}
-
 // List all share links (User authenticated - Global access)
 // GET /api/shares/list/my-shares
 router.get('/list/my-shares', authenticateToken, async (req: Request, res: Response) => {
