@@ -19,8 +19,12 @@ const validateVideoMagicBytes = (filePath: string): Promise<boolean> => {
     const stream = fs.createReadStream(filePath, { start: 0, end: 12 });
     const chunks: Buffer[] = [];
 
-    stream.on('data', (chunk: Buffer) => {
-      chunks.push(chunk);
+    stream.on('data', (chunk: string | Buffer) => {
+      if (Buffer.isBuffer(chunk)) {
+        chunks.push(chunk);
+      } else {
+        chunks.push(Buffer.from(chunk));
+      }
     });
 
     stream.on('end', () => {

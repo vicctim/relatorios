@@ -18,6 +18,7 @@ interface VideoForPDF {
     id: number;
     resolutionLabel: string;
     durationSeconds: number;
+    calculatedDuration: number;
   }[];
   calculatedDuration: number;
 }
