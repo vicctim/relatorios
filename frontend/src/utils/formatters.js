@@ -1,0 +1,125 @@
+import { format, parseISO, isValid } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+export function formatDate(date, formatStr = 'dd/MM/yyyy') {
+    if (!date)
+        return '-';
+    try {
+        const dateObj = typeof date === 'string' ? parseISO(date) : date;
+        if (!isValid(dateObj)) {
+            return '-';
+        }
+        return format(dateObj, formatStr, { locale: ptBR });
+    }
+    catch (error) {
+        console.error('Error formatting date:', error);
+        return '-';
+    }
+}
+export function formatDateTime(date) {
+    if (!date)
+        return '-';
+    try {
+        const dateObj = typeof date === 'string' ? parseISO(date) : date;
+        if (!isValid(dateObj)) {
+            return '-';
+        }
+        return format(dateObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+    }
+    catch (error) {
+        console.error('Error formatting datetime:', error);
+        return '-';
+    }
+}
+export function formatMonthYear(month, year) {
+    const date = new Date(year, month - 1, 1);
+    return format(date, "MMMM 'de' yyyy", { locale: ptBR });
+}
+export function formatDuration(seconds) {
+    // Arredondar segundos para evitar frações
+    const roundedSeconds = Math.round(seconds);
+    if (roundedSeconds < 60) {
+        return `${roundedSeconds}s`;
+    }
+    const minutes = Math.floor(roundedSeconds / 60);
+    const remainingSeconds = roundedSeconds % 60;
+    if (minutes < 60) {
+        return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes > 0) {
+        return `${hours}h ${remainingMinutes}m`;
+    }
+    return `${hours}h`;
+}
+export function formatDurationDetailed(seconds) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.round(seconds % 60);
+    const parts = [];
+    if (hours > 0)
+        parts.push(`${hours}h`);
+    if (minutes > 0)
+        parts.push(`${minutes}m`);
+    if (secs > 0 || parts.length === 0)
+        parts.push(`${secs}s`);
+    return parts.join(' ');
+}
+/**
+ * Formata duração com ênfase nos segundos (para exibição visual)
+ * Retorna objeto com timeFormatted (h/m) e secondsOnly (apenas segundos)
+ */
+export function formatTimeWithEmphasis(seconds) {
+    const totalSeconds = Math.round(seconds);
+    if (seconds < 60) {
+        return {
+            timeFormatted: '',
+            secondsOnly: `${totalSeconds}s`
+        };
+    }
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.round(seconds % 60);
+    if (minutes < 60) {
+        const timeStr = remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}` : `${minutes}m 0`;
+        return {
+            timeFormatted: timeStr,
+            secondsOnly: `${totalSeconds}s`
+        };
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    const timeStr = remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h 0m`;
+    return {
+        timeFormatted: timeStr,
+        secondsOnly: `${totalSeconds}s`
+    };
+}
+export function formatFileSize(bytes) {
+    if (bytes === 0)
+        return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+}
+export function formatResolution(width, height) {
+    return `${width}x${height}`;
+}
+export function formatPercentage(value, total) {
+    if (total === 0)
+        return '0%';
+    return `${Math.round((value / total) * 100)}%`;
+}
+export function capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+export function formatPhoneNumber(phone) {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11) {
+        return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`;
+    }
+    if (cleaned.length === 10) {
+        return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
+}
