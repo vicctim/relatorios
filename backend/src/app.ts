@@ -22,8 +22,8 @@ app.use(cors({
 // Rate limiting (more permissive in development)
 const isDev = process.env.NODE_ENV !== 'production';
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isDev ? 1000 : 100, // 1000 in dev, 100 in production
+  windowMs: 5 * 60 * 1000, // 5 minutes (reduced from 15m)
+  max: 5000, // Increased substantially for internal usage
   message: { error: 'Muitas requisições. Tente novamente mais tarde.' },
   skip: () => isDev, // Skip rate limiting entirely in development
 });
