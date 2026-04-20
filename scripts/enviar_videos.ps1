@@ -1,16 +1,12 @@
 # ============================================================================
-# Pix Filmes — Upload Automatizado de Videos
-# Versao: 1.0.0
+# Pix Filmes - Upload Automatizado de Videos
+# Versao: 1.1.0
 # Uso: Executar via enviar_videos.bat (duplo-clique)
 # ============================================================================
 
 param(
     [string]$PastaOrigem = $PSScriptRoot
 )
-
-# Forcar UTF-8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$OutputEncoding = [System.Text.Encoding]::UTF8
 
 # ============================================================================
 # CONFIGURACAO (hardcoded)
@@ -33,9 +29,9 @@ $VIDEO_EXTENSIONS = @("*.mp4", "*.mov", "*.avi")
 function Write-Header {
     param([string]$Text)
     Write-Host ""
-    Write-Host "  ═══════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "  =================================================" -ForegroundColor Cyan
     Write-Host "  $Text" -ForegroundColor Cyan
-    Write-Host "  ═══════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "  =================================================" -ForegroundColor Cyan
     Write-Host ""
 }
 
@@ -102,7 +98,7 @@ function Invoke-Api {
             $headers["Content-Type"] = "multipart/form-data; boundary=$boundary"
 
             $bodyLines = [System.Collections.ArrayList]::new()
-            
+
             # Add form fields
             foreach ($key in $FormFields.Keys) {
                 [void]$bodyLines.Add("--$boundary")
@@ -114,11 +110,11 @@ function Invoke-Api {
             $headerText = ($bodyLines -join "`r`n")
             if ($headerText) { $headerText += "`r`n" }
             $headerText += "--$boundary`r`n"
-            
+
             $fileName = [System.IO.Path]::GetFileName($FilePath)
             $headerText += "Content-Disposition: form-data; name=`"$FileField`"; filename=`"$fileName`"`r`n"
             $headerText += "Content-Type: application/octet-stream`r`n`r`n"
-            
+
             $footerText = "`r`n--$boundary--`r`n"
 
             $headerBytes = [System.Text.Encoding]::UTF8.GetBytes($headerText)
@@ -156,7 +152,7 @@ function Invoke-Api {
     }
 }
 
-# Upload via curl (melhor para arquivos grandes — mostra progresso)
+# Upload via curl (melhor para arquivos grandes - mostra progresso)
 function Upload-WithCurl {
     param(
         [string]$Endpoint,
@@ -166,7 +162,7 @@ function Upload-WithCurl {
     )
 
     $uri = "$($script:Config['API_URL'])$Endpoint"
-    
+
     $curlArgs = @(
         "-s", "-S",
         "--progress-bar",
@@ -209,7 +205,7 @@ function Replace-WithCurl {
     )
 
     $uri = "$($script:Config['API_URL'])$Endpoint"
-    
+
     $curlArgs = @(
         "-s", "-S",
         "--progress-bar",
@@ -282,7 +278,7 @@ function Connect-Api {
     Write-Header "FASE 1: Autenticando na API"
 
     $result = Invoke-Api -Method "POST" -Endpoint "/auth/api-key" -Body @{ apiKey = $script:Config["API_KEY"] }
-    
+
     if (-not $result.Success) {
         Write-Err "Falha na autenticacao: $($result.Error)"
         return $null
@@ -296,7 +292,7 @@ function Get-ProfessionalId {
     param([string]$Token, [string]$Name)
 
     $result = Invoke-Api -Method "GET" -Endpoint "/professionals" -Token $Token
-    
+
     if (-not $result.Success) {
         Write-Err "Falha ao buscar profissionais: $($result.Error)"
         return $null
@@ -373,14 +369,14 @@ function Get-VideoFiles {
             DurationDisplay = Format-Duration $duration
             FileDate        = $fileDate
             Title           = $titleCandidate
-            ProfessionalId  = $null  # Preenchido depois
+            ProfessionalId  = $null
             IncludeInReport = $true
-            Status          = "PENDENTE"   # NOVO, EXISTENTE, PULAR
+            Status          = "PENDENTE"
             RemoteId        = $null
             RemoteTitle     = $null
             RemoteSize      = $null
             RemoteDate      = $null
-            Action          = $null   # UPLOAD, SUBSTITUIR, SO_DADOS, PULAR
+            Action          = $null
         }
 
         $videoList += $videoInfo
@@ -419,7 +415,11 @@ function Check-Duplicates {
             $video.RemoteId = $check.videoId
             $video.RemoteTitle = $check.title
             $video.RemoteSize = $check.fileSizeBytes
-            $video.RemoteDate = if ($check.uploadedAt) { ([datetime]$check.uploadedAt).ToString("yyyy-MM-dd") } else { "?" }
+            if ($check.uploadedAt) {
+                $video.RemoteDate = ([datetime]$check.uploadedAt).ToString("yyyy-MM-dd")
+            } else {
+                $video.RemoteDate = "?"
+            }
             $existentes++
         } else {
             $video.Status = "NOVO"
@@ -429,8 +429,8 @@ function Check-Duplicates {
     }
 
     Write-Host ""
-    if ($novos -gt 0) { Write-Success "$novos arquivo(s) NOVO(S) — serao enviados" }
-    if ($existentes -gt 0) { Write-Warn "$existentes arquivo(s) ja EXISTEM na base — decisao necessaria" }
+    if ($novos -gt 0) { Write-Success "$novos arquivo(s) NOVO(S) - serao enviados" }
+    if ($existentes -gt 0) { Write-Warn "$existentes arquivo(s) ja EXISTEM na base - decisao necessaria" }
 
     return $Videos
 }
@@ -442,34 +442,40 @@ function Check-Duplicates {
 function Show-VideoCard {
     param([PSCustomObject]$Video, [int]$Total, [int]$ProfessionalId)
 
-    $statusColor = if ($Video.Status -eq "NOVO") { "Green" } else { "Yellow" }
-    $statusIcon = if ($Video.Status -eq "NOVO") { "NOVO" } else { "JA EXISTE NA BASE" }
+    $statusColor = "Green"
+    $statusLabel = ">> NOVO"
+    if ($Video.Status -ne "NOVO") {
+        $statusColor = "Yellow"
+        $statusLabel = ">> JA EXISTE NA BASE"
+    }
 
     Write-Host ""
-    Write-Host "  ┌──────────────────────────────────────────────────────────┐" -ForegroundColor DarkGray
-    Write-Host "  │  [$($Video.Index)/$Total] " -ForegroundColor White -NoNewline
-    Write-Host "$statusIcon" -ForegroundColor $statusColor
-    Write-Host "  │" -ForegroundColor DarkGray
-    Write-Host "  │  Arquivo:     $($Video.FileName)" -ForegroundColor White
-    Write-Host "  │  Tamanho:     $($Video.FileSizeDisplay)" -ForegroundColor White
-    Write-Host "  │  Duracao:     $($Video.DurationDisplay) ($($Video.Duration)s)" -ForegroundColor White
-    Write-Host "  │  Data:        $($Video.FileDate)" -ForegroundColor White
-    Write-Host "  │  Titulo:      $($Video.Title)" -ForegroundColor Cyan
-    Write-Host "  │  Relatorio:   $(if ($Video.IncludeInReport) { 'Sim' } else { 'Nao' })" -ForegroundColor White
+    Write-Host "  +----------------------------------------------------------+" -ForegroundColor DarkGray
+    Write-Host "  |  [$($Video.Index)/$Total] " -ForegroundColor White -NoNewline
+    Write-Host $statusLabel -ForegroundColor $statusColor
+    Write-Host "  |" -ForegroundColor DarkGray
+    Write-Host "  |  Arquivo:     $($Video.FileName)" -ForegroundColor White
+    Write-Host "  |  Tamanho:     $($Video.FileSizeDisplay)" -ForegroundColor White
+    Write-Host "  |  Duracao:     $($Video.DurationDisplay) ($($Video.Duration)s)" -ForegroundColor White
+    Write-Host "  |  Data:        $($Video.FileDate)" -ForegroundColor White
+    Write-Host "  |  Titulo:      $($Video.Title)" -ForegroundColor Cyan
+    $includeText = "Sim"
+    if (-not $Video.IncludeInReport) { $includeText = "Nao" }
+    Write-Host "  |  Relatorio:   $includeText" -ForegroundColor White
 
     if ($Video.Status -eq "EXISTENTE") {
-        Write-Host "  │" -ForegroundColor DarkGray
-        Write-Host "  │  --- Na Base ---" -ForegroundColor Yellow
-        Write-Host "  │  ID:          #$($Video.RemoteId)" -ForegroundColor Yellow
-        Write-Host "  │  Titulo:      $($Video.RemoteTitle)" -ForegroundColor Yellow
-        Write-Host "  │  Upload em:   $($Video.RemoteDate)" -ForegroundColor Yellow
+        Write-Host "  |" -ForegroundColor DarkGray
+        Write-Host "  |  --- Na Base ---" -ForegroundColor Yellow
+        Write-Host "  |  ID:          #$($Video.RemoteId)" -ForegroundColor Yellow
+        Write-Host "  |  Titulo:      $($Video.RemoteTitle)" -ForegroundColor Yellow
+        Write-Host "  |  Upload em:   $($Video.RemoteDate)" -ForegroundColor Yellow
         if ($Video.RemoteSize) {
-            Write-Host "  │  Tamanho:     $(Format-FileSize $Video.RemoteSize)" -ForegroundColor Yellow
+            Write-Host "  |  Tamanho:     $(Format-FileSize $Video.RemoteSize)" -ForegroundColor Yellow
         }
     }
 
-    Write-Host "  │" -ForegroundColor DarkGray
-    Write-Host "  └──────────────────────────────────────────────────────────┘" -ForegroundColor DarkGray
+    Write-Host "  |" -ForegroundColor DarkGray
+    Write-Host "  +----------------------------------------------------------+" -ForegroundColor DarkGray
 }
 
 function Edit-VideoFields {
@@ -486,19 +492,27 @@ function Edit-VideoFields {
     # Duracao
     $newDuration = Read-Host "    Duracao em segundos [$($Video.Duration)]"
     if ($newDuration.Trim()) {
-        try { $Video.Duration = [double]$newDuration.Trim(); $Video.DurationDisplay = Format-Duration $Video.Duration }
+        try {
+            $Video.Duration = [double]$newDuration.Trim()
+            $Video.DurationDisplay = Format-Duration $Video.Duration
+        }
         catch { Write-Warn "Valor invalido, mantendo $($Video.Duration)s" }
     }
 
     # Data
     $newDate = Read-Host "    Data YYYY-MM-DD [$($Video.FileDate)]"
     if ($newDate.Trim()) {
-        try { [datetime]::ParseExact($newDate.Trim(), "yyyy-MM-dd", $null); $Video.FileDate = $newDate.Trim() }
+        try {
+            [datetime]::ParseExact($newDate.Trim(), "yyyy-MM-dd", $null) | Out-Null
+            $Video.FileDate = $newDate.Trim()
+        }
         catch { Write-Warn "Data invalida, mantendo $($Video.FileDate)" }
     }
 
     # Include in report
-    $newInclude = Read-Host "    Incluir no relatorio S/N [$(if ($Video.IncludeInReport) { 'S' } else { 'N' })]"
+    $currentInclude = "S"
+    if (-not $Video.IncludeInReport) { $currentInclude = "N" }
+    $newInclude = Read-Host "    Incluir no relatorio S/N [$currentInclude]"
     if ($newInclude.Trim().ToUpper() -eq "N") { $Video.IncludeInReport = $false }
     elseif ($newInclude.Trim().ToUpper() -eq "S") { $Video.IncludeInReport = $true }
 
@@ -578,15 +592,15 @@ function Approve-Videos {
     }
 
     # Resumo
-    $uploads = ($Videos | Where-Object { $_.Action -eq "UPLOAD" }).Count
-    $substitui = ($Videos | Where-Object { $_.Action -eq "SUBSTITUIR" }).Count
-    $dados = ($Videos | Where-Object { $_.Action -eq "SO_DADOS" }).Count
-    $pular = ($Videos | Where-Object { $_.Action -eq "PULAR" }).Count
+    $uploads = @($Videos | Where-Object { $_.Action -eq "UPLOAD" }).Count
+    $substitui = @($Videos | Where-Object { $_.Action -eq "SUBSTITUIR" }).Count
+    $dados = @($Videos | Where-Object { $_.Action -eq "SO_DADOS" }).Count
+    $pular = @($Videos | Where-Object { $_.Action -eq "PULAR" }).Count
 
     Write-Host ""
-    Write-Host "  ═══════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "  =================================================" -ForegroundColor Cyan
     Write-Host "  RESUMO" -ForegroundColor Cyan
-    Write-Host "  ═══════════════════════════════════════════════" -ForegroundColor Cyan
+    Write-Host "  =================================================" -ForegroundColor Cyan
     if ($uploads -gt 0) { Write-Host "    Novos uploads:   $uploads" -ForegroundColor Green }
     if ($substitui -gt 0) { Write-Host "    Substituicoes:   $substitui" -ForegroundColor Yellow }
     if ($dados -gt 0) { Write-Host "    So dados:        $dados" -ForegroundColor Cyan }
@@ -622,7 +636,7 @@ function Process-Uploads {
     $skipCount = 0
     $logEntries = @()
 
-    $toProcess = $Videos | Where-Object { $_.Action -ne "PULAR" }
+    $toProcess = @($Videos | Where-Object { $_.Action -ne "PULAR" })
     $total = $toProcess.Count
     $current = 0
 
@@ -650,13 +664,14 @@ function Process-Uploads {
                 $result = Upload-WithCurl -Endpoint "/videos" -Token $Token -FilePath $video.FilePath -Fields $fields
 
                 if ($result.Success) {
-                    $newId = if ($result.Data.video) { $result.Data.video.id } else { "?" }
-                    Write-Success "[$current/$total] $($video.FileName) — ID #$newId"
+                    $newId = "?"
+                    if ($result.Data.video) { $newId = $result.Data.video.id }
+                    Write-Success "[$current/$total] $($video.FileName) - ID #$newId"
                     $successCount++
                     $logEntries += "ENVIADO | $($video.FileName) | ID #$newId"
                     $video.RemoteId = $newId
                 } else {
-                    Write-Err "[$current/$total] $($video.FileName) — $($result.Error)"
+                    Write-Err "[$current/$total] $($video.FileName) - $($result.Error)"
                     $errorCount++
                     $logEntries += "ERRO | $($video.FileName) | $($result.Error)"
                 }
@@ -676,11 +691,11 @@ function Process-Uploads {
                 $result = Replace-WithCurl -Endpoint "/videos/$($video.RemoteId)/replace" -Token $Token -FilePath $video.FilePath -Fields $fields
 
                 if ($result.Success) {
-                    Write-Success "[$current/$total] $($video.FileName) — Substituido (ID #$($video.RemoteId))"
+                    Write-Success "[$current/$total] $($video.FileName) - Substituido (ID #$($video.RemoteId))"
                     $successCount++
                     $logEntries += "SUBSTITUIDO | $($video.FileName) | ID #$($video.RemoteId)"
                 } else {
-                    Write-Err "[$current/$total] $($video.FileName) — $($result.Error)"
+                    Write-Err "[$current/$total] $($video.FileName) - $($result.Error)"
                     $errorCount++
                     $logEntries += "ERRO SUBSTITUIR | $($video.FileName) | $($result.Error)"
                 }
@@ -700,11 +715,11 @@ function Process-Uploads {
                 $result = Invoke-Api -Method "PUT" -Endpoint "/videos/$($video.RemoteId)" -Token $Token -Body $body
 
                 if ($result.Success) {
-                    Write-Success "[$current/$total] $($video.FileName) — Dados atualizados (ID #$($video.RemoteId))"
+                    Write-Success "[$current/$total] $($video.FileName) - Dados atualizados (ID #$($video.RemoteId))"
                     $successCount++
                     $logEntries += "DADOS ATUALIZADOS | $($video.FileName) | ID #$($video.RemoteId)"
                 } else {
-                    Write-Err "[$current/$total] $($video.FileName) — $($result.Error)"
+                    Write-Err "[$current/$total] $($video.FileName) - $($result.Error)"
                     $errorCount++
                     $logEntries += "ERRO DADOS | $($video.FileName) | $($result.Error)"
                 }
@@ -739,10 +754,10 @@ function Complete-Process {
 
     # Salvar log
     if (-not (Test-Path $LOG_DIR)) { New-Item -Path $LOG_DIR -ItemType Directory -Force | Out-Null }
-    $logFile = Join-Path $LOG_DIR "upload_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
+    $logFile = Join-Path $LOG_DIR ("upload_" + (Get-Date -Format "yyyyMMdd_HHmmss") + ".txt")
     $logContent = @(
         "=== Pix Filmes - Upload Log ==="
-        "Data: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+        ("Data: " + (Get-Date -Format "yyyy-MM-dd HH:mm:ss"))
         "Pasta: $PastaOrigem"
         "Sucesso: $($Results.Success) | Erros: $($Results.Errors) | Pulados: $($Results.Skipped)"
         "================================"
@@ -762,7 +777,7 @@ function Complete-Process {
 
             $movedCount = 0
             foreach ($video in $Results.Videos) {
-                if ($video.Action -in @("UPLOAD", "SUBSTITUIR") -and (Test-Path $video.FilePath)) {
+                if (($video.Action -eq "UPLOAD" -or $video.Action -eq "SUBSTITUIR") -and (Test-Path $video.FilePath)) {
                     try {
                         Move-Item -Path $video.FilePath -Destination $dateDir -Force
                         $movedCount++
@@ -776,7 +791,7 @@ function Complete-Process {
     }
 
     Write-Host ""
-    Write-Host "  ✅ Processo finalizado!" -ForegroundColor Green
+    Write-Host "  Processo finalizado!" -ForegroundColor Green
     Write-Host ""
 }
 
