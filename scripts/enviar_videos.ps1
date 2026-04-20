@@ -178,7 +178,7 @@ function Upload-WithCurl {
     $curlArgs += $uri
 
     try {
-        $result = & curl @curlArgs 2>&1
+        $result = & curl.exe @curlArgs 2>&1
         $jsonResult = $result | Where-Object { $_ -is [string] -and $_.Trim().StartsWith("{") } | Select-Object -Last 1
         if ($jsonResult) {
             $parsed = $jsonResult | ConvertFrom-Json
@@ -221,7 +221,7 @@ function Replace-WithCurl {
     $curlArgs += $uri
 
     try {
-        $result = & curl @curlArgs 2>&1
+        $result = & curl.exe @curlArgs 2>&1
         $jsonResult = $result | Where-Object { $_ -is [string] -and $_.Trim().StartsWith("{") } | Select-Object -Last 1
         if ($jsonResult) {
             $parsed = $jsonResult | ConvertFrom-Json
