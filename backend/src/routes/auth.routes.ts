@@ -133,8 +133,8 @@ router.post(
         return;
       }
 
-      // Find admin user to generate token
-      const user = await User.findOne({ where: { email: 'admin@pixfilmes.com', active: true } });
+      // Find any active admin user
+      const user = await User.findOne({ where: { role: 'admin', active: true } });
       if (!user) {
         res.status(500).json({ error: 'Usuário admin não encontrado' });
         return;
