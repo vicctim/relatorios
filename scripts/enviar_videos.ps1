@@ -18,6 +18,7 @@ $script:Config = @{
     PROFESSIONAL_NAME = "Victor"
 }
 
+$PastaOrigem = $PastaOrigem.TrimEnd('\', '/')
 $LOG_DIR = Join-Path $PastaOrigem "logs"
 $ENVIADOS_DIR = Join-Path $PastaOrigem "enviados"
 $VIDEO_EXTENSIONS = @("*.mp4", "*.mov", "*.avi")
@@ -323,8 +324,11 @@ function Get-VideoFiles {
         if ($found) { $files += $found }
     }
 
-    # Excluir subpastas (enviados, logs)
-    $files = $files | Where-Object { $_.DirectoryName -eq $PastaOrigem }
+    # Excluir subpastas (enviados, logs) e arquivos _whatsapp
+    $files = $files | Where-Object { 
+        $_.DirectoryName -eq $PastaOrigem -and 
+        $_.Name -notlike '*_whatsapp*'
+    }
 
     if ($files.Count -eq 0) {
         Write-Warn "Nenhum arquivo de video encontrado na pasta."
