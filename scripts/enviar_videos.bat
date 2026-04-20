@@ -17,7 +17,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 :: Executar script PowerShell
-powershell -ExecutionPolicy Bypass -NoProfile -File "%~dp0enviar_videos.ps1" -PastaOrigem "%~dp0"
+powershell -ExecutionPolicy Bypass -NoProfile -File "%~dp0enviar_videos.ps1"
 
 echo.
 echo Pressione qualquer tecla para fechar...

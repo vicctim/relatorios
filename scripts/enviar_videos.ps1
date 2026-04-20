@@ -1,12 +1,11 @@
 # ============================================================================
 # Pix Filmes - Upload Automatizado de Videos
-# Versao: 1.1.0
+# Versao: 1.2.0
 # Uso: Executar via enviar_videos.bat (duplo-clique)
 # ============================================================================
 
-param(
-    [string]$PastaOrigem = $PSScriptRoot
-)
+# Usar sempre a pasta onde o script esta localizado
+$PastaOrigem = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 # ============================================================================
 # CONFIGURACAO (hardcoded)
@@ -18,7 +17,6 @@ $script:Config = @{
     PROFESSIONAL_NAME = "Victor"
 }
 
-$PastaOrigem = $PastaOrigem.TrimEnd('\', '/')
 $LOG_DIR = Join-Path $PastaOrigem "logs"
 $ENVIADOS_DIR = Join-Path $PastaOrigem "enviados"
 $VIDEO_EXTENSIONS = @("*.mp4", "*.mov", "*.avi")
