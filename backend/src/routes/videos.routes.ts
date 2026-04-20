@@ -861,5 +861,160 @@ router.post('/download-zip', authenticateToken, anyAuthenticated, async (req: Re
     }
   }
 });
+// POST /api/videos/check-existing - Check which filenames already exist in database
+router.post('/check-existing', authenticateToken, editorOrAdmin, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { filenames } = req.body;
+
+    if (!Array.isArray(filenames) || filenames.length === 0) {
+      res.status(400).json({ error: 'Lista de filenames é obrigatória' });
+      return;
+    }
+
+    // Find all videos with matching originalFilename
+    const existingVideos = await Video.findAll({
+      where: {
+        originalFilename: {
+          [Op.in]: filenames,
+        },
+        parentId: null, // Only parent videos
+      },
+      include: [
+        { model: Professional, as: 'professional' },
+      ],
+      attributes: ['id', 'title', 'originalFilename', 'durationSeconds', 'fileSizeBytes', 'requestDate', 'createdAt', 'includeInReport'],
+    });
+
+    // Build results map
+    const results: Record<string, any> = {};
+    for (const filename of filenames) {
+      const match = existingVideos.find(v => v.originalFilename === filename);
+      if (match) {
+        results[filename] = {
+          exists: true,
+          videoId: match.id,
+          title: match.title,
+          durationSeconds: match.durationSeconds,
+          fileSizeBytes: match.fileSizeBytes,
+          requestDate: match.requestDate,
+          uploadedAt: match.createdAt,
+          includeInReport: match.includeInReport,
+          professionalName: match.professional?.name || null,
+        };
+      } else {
+        results[filename] = { exists: false };
+      }
+    }
+
+    res.json({ results });
+  } catch (error) {
+    console.error('Check existing videos error:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+});
+
+// PUT /api/videos/:id/replace - Replace video file for existing record
+router.put(
+  '/:id/replace',
+  authenticateToken,
+  editorOrAdmin,
+  uploadVideo.single('video'),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: 'Nenhum arquivo enviado' });
+        return;
+      }
+
+      // Validate magic bytes
+      const isValidVideo = await validateVideoMagicBytes(req.file.path);
+      if (!isValidVideo) {
+        fs.unlinkSync(req.file.path);
+        res.status(400).json({ error: 'Arquivo não é um vídeo válido.' });
+        return;
+      }
+
+      const video = await Video.findByPk(req.params.id);
+      if (!video) {
+        fs.unlinkSync(req.file.path);
+        res.status(404).json({ error: 'Vídeo não encontrado' });
+        return;
+      }
+
+      // Delete old file
+      const oldFilePath = path.isAbsolute(video.filePath)
+        ? video.filePath
+        : path.join(process.cwd(), video.filePath);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+
+      // Delete old thumbnail
+      if (video.thumbnailPath) {
+        const oldThumbPath = path.isAbsolute(video.thumbnailPath)
+          ? video.thumbnailPath
+          : path.join(process.cwd(), video.thumbnailPath);
+        if (fs.existsSync(oldThumbPath)) {
+          fs.unlinkSync(oldThumbPath);
+        }
+      }
+
+      // Process new video
+      const { finalPath, storedFilename, metadata, wasCompressed } =
+        await ffmpegService.processUploadedVideo(req.file.path, req.file.originalname);
+
+      // Generate new thumbnail
+      const thumbnailFilename = path.basename(storedFilename, path.extname(storedFilename));
+      const thumbnailPath = await ffmpegService.extractThumbnail(finalPath, thumbnailFilename);
+
+      // Update video record with new file data
+      video.originalFilename = req.file.originalname;
+      video.storedFilename = storedFilename;
+      video.filePath = finalPath;
+      video.thumbnailPath = thumbnailPath;
+      video.fileSizeBytes = metadata.size;
+      video.durationSeconds = metadata.duration;
+      video.widthPixels = metadata.width;
+      video.heightPixels = metadata.height;
+      video.resolutionLabel = `${metadata.width}x${metadata.height}`;
+
+      // Update metadata from body if provided
+      const { title, requestDate, completionDate, professionalId, includeInReport, customDurationSeconds } = req.body;
+      if (title !== undefined) video.title = title;
+      if (requestDate !== undefined) video.requestDate = new Date(requestDate);
+      if (completionDate !== undefined) video.completionDate = new Date(completionDate);
+      if (professionalId !== undefined) video.professionalId = Number(professionalId);
+      if (includeInReport !== undefined) video.includeInReport = includeInReport === 'true' || includeInReport === true;
+      if (customDurationSeconds !== undefined) {
+        video.customDurationSeconds = customDurationSeconds ? Number(customDurationSeconds) : null;
+      }
+
+      await video.save();
+
+      await video.reload({
+        include: [
+          { model: Professional, as: 'professional' },
+          { model: User, as: 'uploader', attributes: ['id', 'name', 'email'] },
+        ],
+      });
+
+      res.json({
+        video,
+        wasCompressed,
+        message: 'Arquivo substituído com sucesso',
+      });
+    } catch (error) {
+      try {
+        if (req.file && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
+      }
+      console.error('Replace video error:', error);
+      res.status(500).json({ error: 'Erro ao substituir vídeo' });
+    }
+  }
+);
 
 export default router;

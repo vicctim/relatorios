@@ -41,6 +41,7 @@ services:
       - COMPRESSION_THRESHOLD_MB=${COMPRESSION_THRESHOLD_MB:-100}
       - PORT=3001
       - TZ=America/Sao_Paulo
+      - API_KEY=${API_KEY}
       - RUN_MIGRATIONS=${RUN_MIGRATIONS:-false}
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true

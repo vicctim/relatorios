@@ -107,4 +107,51 @@ router.post(
   }
 );
 
+// POST /api/auth/api-key - Autenticação via API Key para automação (script BAT)
+router.post(
+  '/api-key',
+  [body('apiKey').notEmpty().withMessage('API Key é obrigatória')],
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        res.status(400).json({ errors: errors.array() });
+        return;
+      }
+
+      const { apiKey } = req.body;
+      const serverApiKey = process.env.API_KEY;
+
+      if (!serverApiKey) {
+        console.error('API_KEY not configured in environment');
+        res.status(500).json({ error: 'API Key não configurada no servidor' });
+        return;
+      }
+
+      if (apiKey !== serverApiKey) {
+        res.status(401).json({ error: 'API Key inválida' });
+        return;
+      }
+
+      // Find admin user to generate token
+      const user = await User.findOne({ where: { email: 'admin@pixfilmes.com', active: true } });
+      if (!user) {
+        res.status(500).json({ error: 'Usuário admin não encontrado' });
+        return;
+      }
+
+      const token = generateToken(user);
+
+      res.json({
+        token,
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+        user: { id: user.id, name: user.name, email: user.email },
+      });
+    } catch (error) {
+      console.error('API Key auth error:', error);
+      res.status(500).json({ error: 'Erro interno do servidor' });
+    }
+  }
+);
+
 export default router;
