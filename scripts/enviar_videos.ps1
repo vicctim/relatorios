@@ -324,11 +324,8 @@ function Get-VideoFiles {
         if ($found) { $files += $found }
     }
 
-    # Excluir subpastas (enviados, logs) e arquivos _whatsapp
-    $files = $files | Where-Object { 
-        $_.DirectoryName -eq $PastaOrigem -and 
-        $_.Name -notlike '*_whatsapp*'
-    }
+    # Ignorar arquivos _whatsapp
+    $files = $files | Where-Object { $_.Name -notlike '*_whatsapp*' }
 
     if ($files.Count -eq 0) {
         Write-Warn "Nenhum arquivo de video encontrado na pasta."
