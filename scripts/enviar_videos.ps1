@@ -13,51 +13,18 @@ param(
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 # ============================================================================
-# CONFIGURACAO
+# CONFIGURACAO (hardcoded)
 # ============================================================================
 
-$CONFIG_FILE = Join-Path $PastaOrigem "config.env"
+$script:Config = @{
+    API_URL           = "https://relatorio.pixfilmes.com/api"
+    API_KEY           = "815b1293194f59d0ba610c5f8e5a1c8b266dc334a16ed0eb1cd6708aee4f4cbe"
+    PROFESSIONAL_NAME = "Victor"
+}
+
 $LOG_DIR = Join-Path $PastaOrigem "logs"
 $ENVIADOS_DIR = Join-Path $PastaOrigem "enviados"
 $VIDEO_EXTENSIONS = @("*.mp4", "*.mov", "*.avi")
-
-# Carregar configuracao
-function Load-Config {
-    if (-not (Test-Path $CONFIG_FILE)) {
-        Write-Host ""
-        Write-Host "  [ERRO] Arquivo config.env nao encontrado!" -ForegroundColor Red
-        Write-Host "  Crie o arquivo '$CONFIG_FILE' com o conteudo:" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "  API_URL=https://relatorio.pixfilmes.com/api" -ForegroundColor Gray
-        Write-Host "  API_KEY=sua-chave-aqui" -ForegroundColor Gray
-        Write-Host "  PROFESSIONAL_NAME=Victor" -ForegroundColor Gray
-        Write-Host ""
-        exit 1
-    }
-
-    $script:Config = @{}
-    Get-Content $CONFIG_FILE | ForEach-Object {
-        $line = $_.Trim()
-        if ($line -and -not $line.StartsWith("#")) {
-            $parts = $line -split "=", 2
-            if ($parts.Count -eq 2) {
-                $script:Config[$parts[0].Trim()] = $parts[1].Trim()
-            }
-        }
-    }
-
-    # Validar campos obrigatorios
-    @("API_URL", "API_KEY") | ForEach-Object {
-        if (-not $script:Config[$_]) {
-            Write-Host "  [ERRO] Campo obrigatorio '$_' nao encontrado em config.env" -ForegroundColor Red
-            exit 1
-        }
-    }
-
-    if (-not $script:Config["PROFESSIONAL_NAME"]) {
-        $script:Config["PROFESSIONAL_NAME"] = "Victor"
-    }
-}
 
 # ============================================================================
 # UTILITARIOS
@@ -818,9 +785,6 @@ function Complete-Process {
 # ============================================================================
 
 function Main {
-    # Carregar configuracao
-    Load-Config
-
     # Fase 1: Pre-requisitos
     if (-not (Test-Prerequisites)) { return }
 
