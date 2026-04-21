@@ -766,29 +766,6 @@ function Complete-Process {
     $logContent | Out-File -FilePath $logFile -Encoding UTF8
     Write-Info "Log salvo em: $logFile"
 
-    # Mover enviados
-    if ($Results.Success -gt 0) {
-        Write-Host ""
-        $moveChoice = Read-Host "  Mover arquivos enviados para ./enviados/? [S/N]"
-        if ($moveChoice.ToUpper() -eq "S") {
-            $dateDir = Join-Path $ENVIADOS_DIR (Get-Date -Format "yyyy-MM-dd")
-            if (-not (Test-Path $dateDir)) { New-Item -Path $dateDir -ItemType Directory -Force | Out-Null }
-
-            $movedCount = 0
-            foreach ($video in $Results.Videos) {
-                if (($video.Action -eq "UPLOAD" -or $video.Action -eq "SUBSTITUIR") -and (Test-Path $video.FilePath)) {
-                    try {
-                        Move-Item -Path $video.FilePath -Destination $dateDir -Force
-                        $movedCount++
-                    } catch {
-                        Write-Warn "Nao foi possivel mover: $($video.FileName)"
-                    }
-                }
-            }
-            Write-Success "$movedCount arquivo(s) movido(s) para $dateDir"
-        }
-    }
-
     Write-Host ""
     Write-Host "  Processo finalizado!" -ForegroundColor Green
     Write-Host ""
