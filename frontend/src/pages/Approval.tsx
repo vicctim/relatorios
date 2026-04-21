@@ -31,6 +31,7 @@ export default function Approval() {
   // Drafts for editing
   const [drafts, setDrafts] = useState<Record<number, VideoDraft>>({});
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
   // Player preview
   const [previewVideo, setPreviewVideo] = useState<Video | null>(null);
@@ -165,6 +166,52 @@ export default function Approval() {
     }
   };
 
+  const handleSaveAll = async () => {
+    setIsSavingAll(true);
+    let successCount = 0;
+    
+    // Save sequentially to avoid backend overload
+    for (const video of videos) {
+      const draft = drafts[video.id];
+      if (!draft) continue;
+
+      setSavingIds((prev) => new Set(prev).add(video.id));
+      
+      try {
+        await videosApi.update(video.id, {
+          title: draft.title,
+          professionalId: parseInt(draft.professionalId),
+          requestDate: new Date(draft.requestDate + 'T12:00:00').toISOString(),
+          completionDate: new Date(draft.requestDate + 'T12:00:00').toISOString(),
+          includeInReport: draft.includeInReport,
+          customDurationSeconds: draft.customDurationSecondsStr ? parseInt(draft.customDurationSecondsStr) : undefined,
+        });
+        
+        successCount++;
+        setDrafts((prev) => ({
+          ...prev,
+          [video.id]: {
+            ...prev[video.id],
+            isCustomDurationSuggested: false,
+          }
+        }));
+      } catch (error: any) {
+        toast.error(`Erro ao salvar: ${draft.title}`);
+      } finally {
+        setSavingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(video.id);
+          return next;
+        });
+      }
+    }
+    
+    setIsSavingAll(false);
+    if (successCount > 0) {
+      toast.success(`${successCount} vídeos aprovados com sucesso!`);
+    }
+  };
+
   const handlePreview = async (videoId: number) => {
     try {
       setIsLoadingVideo(true);
@@ -180,11 +227,24 @@ export default function Approval() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Análise e Aprovação em Massa</h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          Edite os campos preenchidos e aplique ajustes rapidamente com a tabela.
-        </p>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Análise e Aprovação em Massa</h1>
+          <p className="text-gray-500 dark:text-gray-400">
+            Edite os campos preenchidos e aplique ajustes rapidamente com a tabela.
+          </p>
+        </div>
+        
+        {videos.length > 0 && !isLoading && (
+          <button
+            onClick={handleSaveAll}
+            disabled={isSavingAll}
+            className="btn-primary flex items-center justify-center gap-2 whitespace-nowrap"
+          >
+            {isSavingAll ? <LoadingSpinner size="sm" /> : <Save className="w-5 h-5" />}
+            Aprovar Todos da Página
+          </button>
+        )}
       </div>
 
       <div className="card p-4 space-y-4">
