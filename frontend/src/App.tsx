@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
 import UploadVersion from './pages/UploadVersion';
 import Videos from './pages/Videos';
+import Approval from './pages/Approval';
 import Reports from './pages/Reports';
 import Shares from './pages/Shares';
 import Users from './pages/admin/Users';
@@ -105,6 +106,14 @@ export default function App() {
           element={
             <ProtectedRoute allowedRoles={['editor', 'admin']}>
               <UploadVersion />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/approval"
+          element={
+            <ProtectedRoute allowedRoles={['editor', 'admin']}>
+              <Approval />
             </ProtectedRoute>
           }
         />

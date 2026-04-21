@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Upload,
   FileVideo,
+  ListChecks,
   FileText,
   Share2,
   Settings,
@@ -47,6 +48,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'editor', 'viewer'] },
     { name: 'Upload', href: '/upload', icon: Upload, roles: ['editor', 'admin'] },
+    { name: 'Aprovação', href: '/approval', icon: ListChecks, roles: ['editor', 'admin'] },
     { name: 'Vídeos', href: '/videos', icon: FileVideo, roles: ['admin', 'editor', 'viewer'] },
     { name: 'Relatórios', href: '/reports', icon: FileText, roles: ['admin', 'editor', 'viewer'] },
     { name: 'Compartilhamentos', href: '/shares', icon: Share2, roles: ['admin', 'editor', 'viewer'] },
