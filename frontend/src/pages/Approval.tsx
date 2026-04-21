@@ -92,9 +92,11 @@ export default function Approval() {
 
   const loadVideos = async () => {
     setIsLoading(true);
+    setVideos([]);
     try {
       const response = await videosApi.list({
         parentOnly: true,
+        isApproved: false,
         professionalId: selectedProfessional ? parseInt(selectedProfessional) : undefined,
         search: search || undefined,
         month: selectedMonth,
@@ -143,10 +145,15 @@ export default function Approval() {
         requestDate: new Date(draft.requestDate + 'T12:00:00').toISOString(),
         completionDate: new Date(draft.requestDate + 'T12:00:00').toISOString(), // Keep it synced
         includeInReport: draft.includeInReport,
+        isApproved: true,
         customDurationSeconds: draft.customDurationSecondsStr ? parseInt(draft.customDurationSecondsStr) : undefined,
       });
       
-      toast.success('Salvo!');
+      toast.success('Salvo e Aprovado!');
+      
+      // Remover o vídeo da lista já que ele foi aprovado
+      setVideos((prev) => prev.filter(v => v.id !== video.id));
+      
       // Atualizar o visual suggestion flag porque agora está efetivamente salvo
       setDrafts((prev) => ({
         ...prev,
@@ -184,10 +191,15 @@ export default function Approval() {
           requestDate: new Date(draft.requestDate + 'T12:00:00').toISOString(),
           completionDate: new Date(draft.requestDate + 'T12:00:00').toISOString(),
           includeInReport: draft.includeInReport,
+          isApproved: true,
           customDurationSeconds: draft.customDurationSecondsStr ? parseInt(draft.customDurationSecondsStr) : undefined,
         });
         
         successCount++;
+        
+        // Remove from list since it was approved
+        setVideos((currentVideos) => currentVideos.filter(v => v.id !== video.id));
+        
         setDrafts((prev) => ({
           ...prev,
           [video.id]: {

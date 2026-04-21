@@ -73,6 +73,7 @@ router.get('/', authenticateToken, anyAuthenticated, async (req: Request, res: R
       professionalId,
       search,
       parentOnly,
+      isApproved,
       page = 1,
       limit = 50
     } = req.query;
@@ -105,6 +106,13 @@ router.get('/', authenticateToken, anyAuthenticated, async (req: Request, res: R
     // Filter only parent videos
     if (parentOnly === 'true') {
       where.parentId = null;
+    }
+
+    // Filter by approval status
+    if (isApproved === 'true') {
+      where.isApproved = true;
+    } else if (isApproved === 'false') {
+      where.isApproved = false;
     }
 
     const { count, rows: videos } = await Video.findAndCountAll({
@@ -281,6 +289,7 @@ router.post(
         professionalId: Number(professionalId),
         uploadedBy: req.user!.id,
         includeInReport: shouldIncludeInReport,
+        isApproved: false,
       });
 
       // Reload with associations
@@ -427,6 +436,7 @@ router.post(
         professionalId: parentVideo.professionalId,
         uploadedBy: req.user!.id,
         includeInReport: parentVideo.includeInReport, // F-011: Herdar do pai
+        isApproved: false,
       });
 
       // Check monthly limit usage after version upload (in background)
@@ -514,7 +524,7 @@ router.put(
         return;
       }
 
-      const { title, requestDate, completionDate, professionalId, isTv, tvTitle, customDurationSeconds, includeInReport } = req.body;
+      const { title, requestDate, completionDate, professionalId, isTv, tvTitle, customDurationSeconds, includeInReport, isApproved } = req.body;
 
       // Update fields
       if (title !== undefined) video.title = title;
@@ -528,6 +538,9 @@ router.put(
       }
       if (includeInReport !== undefined) {
         video.includeInReport = includeInReport === 'true' || includeInReport === true;
+      }
+      if (isApproved !== undefined) {
+        video.isApproved = isApproved === 'true' || isApproved === true;
       }
 
       // F-008: Validar que completionDate >= requestDate

@@ -24,11 +24,12 @@ interface VideoAttributes {
   professionalId: number;
   uploadedBy: number;
   includeInReport: boolean;
+  isApproved: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
-interface VideoCreationAttributes extends Optional<VideoAttributes, 'id' | 'parentId' | 'isTv' | 'tvTitle' | 'thumbnailPath' | 'customDurationSeconds' | 'includeInReport' | 'createdAt' | 'updatedAt'> {}
+interface VideoCreationAttributes extends Optional<VideoAttributes, 'id' | 'parentId' | 'isTv' | 'tvTitle' | 'thumbnailPath' | 'customDurationSeconds' | 'includeInReport' | 'isApproved' | 'createdAt' | 'updatedAt'> {}
 
 class Video extends Model<VideoAttributes, VideoCreationAttributes> implements VideoAttributes {
   public id!: number;
@@ -51,6 +52,7 @@ class Video extends Model<VideoAttributes, VideoCreationAttributes> implements V
   public professionalId!: number;
   public uploadedBy!: number;
   public includeInReport!: boolean;
+  public isApproved!: boolean;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 
@@ -179,6 +181,12 @@ Video.init(
       allowNull: false,
       defaultValue: true,
       field: 'include_in_report',
+    },
+    isApproved: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+      field: 'isApproved',
     },
   },
   {

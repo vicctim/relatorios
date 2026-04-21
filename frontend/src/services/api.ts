@@ -100,6 +100,7 @@ export const videosApi = {
     professionalId?: number;
     search?: string;
     parentOnly?: boolean;
+    isApproved?: boolean;
     page?: number;
     limit?: number;
   }) => api.get('/videos', { params }),
@@ -155,6 +156,7 @@ export const videosApi = {
     isTv: boolean;
     tvTitle: string | null;
     includeInReport?: boolean;
+    isApproved?: boolean;
     customDurationSeconds?: number;
   }>) => api.put(`/videos/${id}`, data),
   delete: (id: number) => api.delete(`/videos/${id}`),
