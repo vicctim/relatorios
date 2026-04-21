@@ -13,6 +13,8 @@ interface VideoDraft {
   customDurationSecondsStr: string;
   includeInReport: boolean;
   isCustomDurationSuggested: boolean; // Flag to show a visual hint
+  isTv: boolean;
+  tvTitle: string;
 }
 
 export default function Approval() {
@@ -71,6 +73,8 @@ export default function Approval() {
           customDurationSecondsStr: customDurationStr,
           includeInReport: video.includeInReport !== undefined ? video.includeInReport : true,
           isCustomDurationSuggested: isSuggested,
+          isTv: video.isTv || false,
+          tvTitle: video.tvTitle || '',
         };
         hasChanges = true;
       }
@@ -147,6 +151,8 @@ export default function Approval() {
         includeInReport: draft.includeInReport,
         isApproved: true,
         customDurationSeconds: draft.customDurationSecondsStr ? parseInt(draft.customDurationSecondsStr) : undefined,
+        isTv: draft.isTv,
+        tvTitle: draft.isTv ? draft.tvTitle : null,
       });
       
       toast.success('Salvo e Aprovado!');
@@ -193,6 +199,8 @@ export default function Approval() {
           includeInReport: draft.includeInReport,
           isApproved: true,
           customDurationSeconds: draft.customDurationSecondsStr ? parseInt(draft.customDurationSecondsStr) : undefined,
+          isTv: draft.isTv,
+          tvTitle: draft.isTv ? draft.tvTitle : null,
         });
         
         successCount++;
@@ -356,6 +364,30 @@ export default function Approval() {
                           <option key={prof.id} value={prof.id}>{prof.name}</option>
                         ))}
                       </select>
+                      
+                      <div className="flex flex-col gap-1.5 mt-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                        <label className="flex items-center gap-2 cursor-pointer text-sm">
+                          <input
+                            type="checkbox"
+                            checked={draft.isTv}
+                            onChange={(e) => updateDraft(video.id, 'isTv', e.target.checked)}
+                            className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+                          />
+                          <span className="text-gray-700 dark:text-gray-300 font-medium">Vídeo para TV</span>
+                        </label>
+                        {draft.isTv && (
+                          <div className="space-y-1 mt-1">
+                            <label className="text-xs text-gray-500 dark:text-gray-400 block">Título TV</label>
+                            <input
+                              type="text"
+                              value={draft.tvTitle}
+                              onChange={(e) => updateDraft(video.id, 'tvTitle', e.target.value)}
+                              className="input text-sm py-1"
+                              placeholder="Título do programa de TV"
+                            />
+                          </div>
+                        )}
+                      </div>
                     </td>
 
                     <td className="px-4 py-3 align-top">
