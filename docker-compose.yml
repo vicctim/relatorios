@@ -46,7 +46,7 @@ services:
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
     volumes:
-      - ./uploads:/app/uploads
+      - uploads_data:/app/uploads
     cpus: 2
     mem_limit: 2g
     depends_on:
@@ -80,6 +80,9 @@ services:
 
 volumes:
   mysql_data:
+  uploads_data:
+    external: true
+    name: relatorios_uploads_data
 
 networks:
   default:
